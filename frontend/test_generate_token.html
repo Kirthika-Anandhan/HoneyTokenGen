@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Honeytoken Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #result {
+            margin-top: 30px;
+        }
+
+        .token-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .token-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .token-number {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+
+        .token-type {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .token-value {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .metric-value.high {
+            color: #10b981;
+        }
+
+        .metric-value.medium {
+            color: #f59e0b;
+        }
+
+        .metric-value.low {
+            color: #ef4444;
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .method-vae {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .method-diffusion {
+            background: #fce7f3;
+            color: #9f1239;
+        }
+
+        .method-hybrid {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .stats-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .stats-summary h3 {
+            margin-bottom: 10px;
+        }
+
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 ML Honeytoken Generator</h1>
+            <p>Advanced AI-Powered Security Tokens with 90-95% Authenticity</p>
+            <div>
+                <span class="badge">VAE</span>
+                <span class="badge">Diffusion Model</span>
+                <span class="badge">Adversarial Training</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="info-box">
+                <h4>🎯 What are Honeytokens?</h4>
+                <ul>
+                    <li>Fake credentials that look real to detect unauthorized access</li>
+                    <li>Generated using advanced ML models (VAE + Diffusion + GAN)</li>
+                    <li>High entropy and authenticity scores </li>
+                    <li>Multiple generation methods: VAE, Diffusion, or Hybrid</li>
+                </ul>
+            </div>
+
+            <div class="form-section">
+                <h2 style="margin-bottom: 20px;">Generate Honeytokens</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tokenType">Token Type</label>
+                        <select id="tokenType">
+                            <option value="jwt">JWT Token</option>
+                            <option value="api">API Key</option>
+                            <option value="github">GitHub Token</option>
+                            <option value="db_record">Database Credentials</option>
+                            <option value="cloud">Cloud API Key</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="method">Generation Method</label>
+                        <select id="method">
+                            <option value="hybrid">Hybrid (Recommended)</option>
+                            <option value="vae">VAE (Fast)</option>
+                            <option value="diffusion">Diffusion (High Quality)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="quantity">Quantity (1-50)</label>
+                    <input type="number" id="quantity" min="1" max="50" value="5">
+                </div>
+
+                <button id="genBtn" onclick="generateTokens()">
+                    🚀 Generate Honeytokens
+                </button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Generating ML-powered honeytokens...</p>
+                </div>
+            </div>
+
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function generateTokens() {
+            const tokenType = document.getElementById('tokenType').value;
+            const method = document.getElementById('method').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            // Validation
+            if (quantity < 1 || quantity > 50) {
+                alert('Quantity must be between 1 and 50');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('genBtn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').innerHTML = '';
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/generate-token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        token_usage: tokenType,
+                        quantity: quantity,
+                        method: method
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `
+                    <div style="background: #fee2e2; color: #991b1b; padding: 20px; border-radius: 8px;">
+                        <strong>Error:</strong> ${error.message}<br>
+                        Make sure the API server is running on http://127.0.0.1:8000
+                    </div>
+                `;
+            } finally {
+                document.getElementById('genBtn').disabled = false;
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            const tokens = data.tokens;
+            
+            // Calculate summary stats
+            const avgEntropy = (tokens.reduce((sum, t) => sum + t.entropy, 0) / tokens.length).toFixed(3);
+            const avgAuth = (tokens.reduce((sum, t) => sum + t.similarity, 0) / tokens.length).toFixed(3);
+            
+            let html = `
+                <div class="stats-summary">
+                    <h3>✅ Generated ${tokens.length} Honeytoken(s)</h3>
+                    <p>Method: <strong>${data.method.toUpperCase()}</strong> | 
+                       Avg Entropy: <strong>${avgEntropy}</strong> | 
+                       Avg Authenticity: <strong>${avgAuth}</strong></p>
+                </div>
+            `;
+
+            tokens.forEach((token, idx) => {
+                const tokenValueDisplay = formatTokenValue(token.token_value);
+                const methodClass = `method-${token.method}`;
+                
+                const entropyClass = token.entropy >= 4.5 ? 'high' : token.entropy >= 3.5 ? 'medium' : 'low';
+                const authClass = token.similarity >= 0.90 ? 'high' : token.similarity >= 0.80 ? 'medium' : 'low';
+                
+                html += `
+                    <div class="token-card">
+                        <div class="token-header">
+                            <span class="token-number">Token #${idx + 1}</span>
+                            <div>
+                                <span class="token-type">${token.token_type || data.token_usage}</span>
+                                <span class="method-badge ${methodClass}">${token.method}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="token-value">
+                            <pre style="margin: 0; white-space: pre-wrap;">${tokenValueDisplay}</pre>
+                        </div>
+                        
+                        <button class="copy-btn" onclick="copyToClipboard(\`${escapeHtml(tokenValueDisplay)}\`, ${idx})">
+                            📋 Copy Token
+                        </button>
+                        
+                        <div class="metrics">
+                            <div class="metric">
+                                <div class="metric-label">Entropy</div>
+                                <div class="metric-value ${entropyClass}">${token.entropy.toFixed(3)}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Authenticity</div>
+                                <div class="metric-value ${authClass}">${(token.similarity * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Discriminator</div>
+                                <div class="metric-value ${authClass}">${(token.discriminator * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('result').innerHTML = html;
+        }
+
+        function formatTokenValue(tokenValue) {
+            if (typeof tokenValue === 'string') {
+                return tokenValue;
+            } else if (typeof tokenValue === 'object') {
+                return JSON.stringify(tokenValue, null, 2);
+            }
+            return String(tokenValue);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`');
+        }
+
+        function copyToClipboard(text, idx) {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.style.background = '#059669';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#10b981';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+    </script>
+</body>
+</html>

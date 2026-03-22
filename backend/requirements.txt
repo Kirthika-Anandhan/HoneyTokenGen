@@ -1,0 +1,49 @@
+fastapi
+uvicorn
+pymongo
+numpy
+pandas
+python-dotenv
+torch
+# SAC Implementation Requirements
+# For Adaptive Honeytoken Deployment Engine
+
+# Core Deep Learning
+# torch==2.0.1
+torchvision==0.15.2
+
+# Reinforcement Learning
+gym==0.26.2
+numpy==1.24.3
+
+# Visualization
+matplotlib==3.7.1
+seaborn==0.12.2
+
+# Progress bars
+tqdm==4.65.0
+
+# Data handling
+pandas==2.0.3
+
+# Utilities
+python-dateutil==2.8.2
+
+# Optional: For GPU acceleration
+# nvidia-cuda-runtime-cu11==11.7.99
+# nvidia-cublas-cu11==11.10.3.66
+
+# Installation Instructions:
+# 1. Create virtual environment:
+#    python -m venv venv
+#
+# 2. Activate virtual environment:
+#    - Windows: venv\Scripts\activate
+#    - Linux/Mac: source venv/bin/activate
+#
+# 3. Install requirements:
+#    pip install -r requirements.txt
+#
+# 4. Verify installation:
+#    python -c "import torch; print(f'PyTorch: {torch.__version__}')"
+#    python -c "import gym; print(f'Gym: {gym.__version__}')"

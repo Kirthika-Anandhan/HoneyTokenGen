@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-03-22T10:35:40.975953Z",
+  "overall_risk": "\ud83d\udfe1 MEDIUM",
+  "max_anomaly": 0.5665,
+  "mean_anomaly": 0.5338,
+  "dominant_stage": "privilege_escalation",
+  "attack_stages": [
+    "privilege_escalation"
+  ],
+  "alert_windows": 60,
+  "total_snapshots": 60,
+  "timeline": [
+    {
+      "time": "2023-11-14T22:13:21.211470",
+      "behaviour": "privilege_escalation",
+      "confidence": "23.9%",
+      "anomaly": "0.535"
+    }
+  ],
+  "recommendations": [
+    "Audit sudo/SUID binaries on affected hosts",
+    "Alert CISO \u2014 active privilege escalation detected"
+  ],
+  "mitre_mapping": {
+    "privilege_escalation": "TA0004 \u2014 Privilege Escalation / T1548 Abuse Elevation Control"
+  }
+}

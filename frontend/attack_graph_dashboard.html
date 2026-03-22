@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Attack Behaviour Graph Intelligence</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --bg2:       #161b22;
+      --bg3:       #21262d;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --blue:      #58a6ff;
+      --purple:    #bc8cff;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; }
+
+    /* ── Header ── */
+    .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header-title { font-size: 18px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 10px; }
+    .header-title .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .header-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    /* ── Layout ── */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    /* ── Cards ── */
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; }
+
+    /* ── Stat cards ── */
+    .stat-value { font-size: 32px; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-green  { color: var(--green); }
+    .stat-yellow { color: var(--yellow); }
+    .stat-orange { color: var(--orange); }
+    .stat-red    { color: var(--red); }
+    .stat-blue   { color: var(--blue); }
+
+    /* ── Risk badge ── */
+    .risk-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .risk-LOW      { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+    .risk-MEDIUM   { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+    .risk-HIGH     { background: rgba(240,136,62,.15); color: var(--orange); border: 1px solid rgba(240,136,62,.3); }
+    .risk-CRITICAL { background: rgba(248,81,73,.15);  color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
+
+    /* ── Behaviour pill ── */
+    .behaviour-pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .bhvr-benign               { background: rgba(63,185,80,.15);  color: var(--green); }
+    .bhvr-reconnaissance       { background: rgba(88,166,255,.15); color: var(--blue); }
+    .bhvr-lateral_movement     { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .bhvr-privilege_escalation { background: rgba(188,140,255,.15);color: var(--purple); }
+    .bhvr-exfiltration         { background: rgba(248,81,73,.15);  color: var(--red); }
+
+    /* ── MITRE tag ── */
+    .mitre-tag { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; font-size: 12px; }
+    .mitre-tag strong { color: var(--blue); display: block; margin-bottom: 2px; }
+
+    /* ── Recommendations ── */
+    .rec-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .rec-item:last-child { border-bottom: none; }
+    .rec-icon { color: var(--orange); flex-shrink: 0; margin-top: 2px; }
+
+    /* ── Timeline table ── */
+    .timeline-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .timeline-table th { text-align: left; padding: 8px 10px; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+    .timeline-table td { padding: 8px 10px; border-bottom: 1px solid rgba(48,54,61,.5); }
+    .timeline-table tr:last-child td { border-bottom: none; }
+    .anomaly-bar-wrap { background: var(--bg3); border-radius: 4px; height: 6px; width: 100px; overflow: hidden; }
+    .anomaly-bar { height: 100%; border-radius: 4px; transition: width .3s; }
+
+    /* ── Graph images ── */
+    .graph-img { width: 100%; border-radius: 6px; border: 1px solid var(--border); display: block; }
+    .graph-placeholder { background: var(--bg3); border: 1px dashed var(--border); border-radius: 6px; height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
+
+    /* ── Buttons ── */
+    .btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--blue); color: #000; }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--red); color: #fff; }
+
+    /* ── Loading spinner ── */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status bar ── */
+    .status-bar { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .status-bar.success { border-color: rgba(63,185,80,.4); color: var(--green); }
+    .status-bar.error   { border-color: rgba(248,81,73,.4); color: var(--red); }
+    .status-bar.loading { border-color: rgba(88,166,255,.4); color: var(--blue); }
+
+    /* ── Anomaly meter ── */
+    .meter-wrap { background: var(--bg3); border-radius: 8px; height: 12px; overflow: hidden; margin: 8px 0; }
+    .meter-fill { height: 100%; border-radius: 8px; transition: width .8s ease; }
+
+    /* ── Section spacing ── */
+    .section { margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-title { font-size: 14px; font-weight: 600; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 48px; color: var(--muted); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 8px 16px; font-size: 13px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s; }
+    .tab.active { color: var(--text); border-bottom-color: var(--blue); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    @media (max-width: 900px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .span-2, .span-3 { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="header-title">
+      <div class="dot"></div>
+      Attack Behaviour Graph Intelligence
+    </div>
+    <div class="header-sub">Temporal GNN — Module 2 / 4</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span id="last-run" style="color:var(--muted);font-size:12px;">No analysis run yet</span>
+    <button class="btn btn-secondary" onclick="loadLastReport()">Load Last Report</button>
+    <button class="btn btn-primary" id="run-btn" onclick="runDemo()">
+      Run Demo Analysis
+    </button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Status bar -->
+  <div id="status-bar" class="status-bar" style="display:none;"></div>
+
+  <!-- Empty state -->
+  <div id="empty-state" class="empty">
+    <div class="empty-icon">🕸️</div>
+    <div class="empty-text">Run a demo analysis or load a previous report to see the attack graph intelligence.</div>
+    <br/>
+    <button class="btn btn-primary" onclick="runDemo()">Run Demo Analysis</button>
+  </div>
+
+  <!-- Dashboard (hidden until data loads) -->
+  <div id="dashboard" style="display:none;">
+
+    <!-- Row 1: Stat cards -->
+    <div class="section grid-4">
+      <div class="card">
+        <div class="card-title">Risk Level</div>
+        <div id="stat-risk"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Max Anomaly Score</div>
+        <div id="stat-anomaly-max" class="stat-value stat-red">—</div>
+        <div class="stat-label">Peak threat intensity</div>
+        <div class="meter-wrap" style="margin-top:8px;">
+          <div id="anomaly-meter" class="meter-fill" style="width:0%;background:var(--red);"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Alert Windows</div>
+        <div id="stat-alerts" class="stat-value stat-orange">—</div>
+        <div class="stat-label" id="stat-alerts-sub">of total snapshots</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Events Processed</div>
+        <div id="stat-events" class="stat-value stat-blue">—</div>
+        <div class="stat-label" id="stat-events-sub">attack / benign</div>
+      </div>
+    </div>
+
+    <!-- Row 2: Dominant stage + attack stages + MITRE -->
+    <div class="section grid-3">
+      <div class="card">
+        <div class="card-title">Dominant Attack Stage</div>
+        <div id="dominant-stage" style="margin-bottom:12px;"></div>
+        <div class="card-title" style="margin-top:8px;">All Stages Detected</div>
+        <div id="attack-stages"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">MITRE ATT&CK Mapping</div>
+        <div id="mitre-mapping"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recommendations</div>
+        <div id="recommendations"></div>
+      </div>
+    </div>
+
+    <!-- Row 3: Graphs (tabs) -->
+    <div class="section card">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('timeline')">Anomaly Timeline</div>
+        <div class="tab" onclick="switchTab('campaign')">Campaign Evolution</div>
+        <div class="tab" onclick="switchTab('peak')">Peak Snapshot</div>
+      </div>
+      <div id="tab-timeline" class="tab-panel active">
+        <div class="graph-placeholder" id="ph-timeline">Timeline graph will appear here</div>
+        <img id="img-timeline" class="graph-img" style="display:none;" alt="Anomaly Timeline"/>
+      </div>
+      <div id="tab-campaign" class="tab-panel">
+        <div class="graph-placeholder" id="ph-campaign">Campaign evolution graph will appear here</div>
+        <img id="img-campaign" class="graph-img" style="display:none;" alt="Campaign Evolution"/>
+      </div>
+      <div id="tab-peak" class="tab-panel">
+        <div class="graph-placeholder" id="ph-peak">Peak snapshot graph will appear here</div>
+        <img id="img-peak" class="graph-img" style="display:none;" alt="Peak Snapshot"/>
+      </div>
+    </div>
+
+    <!-- Row 4: Timeline table -->
+    <div class="section card">
+      <div class="section-header">
+        <div class="section-title">Attack Timeline</div>
+        <span id="timeline-count" style="color:var(--muted);font-size:12px;"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="timeline-table">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Behaviour</th>
+              <th>Confidence</th>
+              <th>Anomaly Score</th>
+              <th>Intensity</th>
+            </tr>
+          </thead>
+          <tbody id="timeline-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /container -->
+
+<script>
+  const API_BASE = 'http://127.0.0.1:8000/api/attack-graph';
+
+  function setStatus(msg, type='loading') {
+    const el = document.getElementById('status-bar');
+    el.style.display = 'flex';
+    el.className = `status-bar ${type}`;
+    el.innerHTML = type === 'loading'
+      ? `<span class="spinner"></span>${msg}`
+      : msg;
+    if (type !== 'loading') setTimeout(() => el.style.display = 'none', 5000);
+  }
+
+  function setBtn(loading) {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? '<span class="spinner"></span>Analysing...'
+      : 'Run Demo Analysis';
+  }
+
+  async function runDemo() {
+    setBtn(true);
+    setStatus('Running TGN pipeline on synthetic attack campaign...');
+    document.getElementById('empty-state').style.display = 'none';
+
+    try {
+      const res  = await fetch(`${API_BASE}/demo`);
+      const json = await res.json();
+      if (json.status !== 'success') throw new Error(json.message);
+      renderDashboard(json.data);
+      setStatus('Analysis complete — threat intelligence report generated.', 'success');
+    } catch(e) {
+      setStatus(`Error: ${e.message}`, 'error');
+      document.getElementById('empty-state').style.display = 'block';
+    } finally {
+      setBtn(false);
+    }
+  }
+
+  async function loadLastReport() {
+    setStatus('Loading last saved report...');
+    try {
+      const res  = await fetch(`${API_BASE}/report`);
+      const json = await res.json();
+      if (json.status !== 'success') throw new Error(json.message);
+      renderDashboard(json.data);
+      setStatus('Last report loaded.', 'success');
+    } catch(e) {
+      setStatus(`Error: ${e.message}. Run a demo first.`, 'error');
+    }
+  }
+
+  function renderDashboard(data) {
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    const ts = data.generated_at ? new Date(data.generated_at).toLocaleString() : '';
+    document.getElementById('last-run').textContent = ts ? `Last run: ${ts}` : '';
+
+    // ── Risk level ──
+    const riskRaw = (data.overall_risk || 'MEDIUM').replace(/[^A-Z]/g,'');
+    document.getElementById('stat-risk').innerHTML =
+      `<div class="risk-badge risk-${riskRaw}" style="font-size:16px;padding:8px 16px;">
+        ${data.overall_risk || '—'}
+      </div>`;
+
+    // ── Anomaly ──
+    const maxA = data.max_anomaly || 0;
+    document.getElementById('stat-anomaly-max').textContent = maxA.toFixed(4);
+    document.getElementById('anomaly-meter').style.width = (maxA * 100) + '%';
+    const ac = maxA > 0.8 ? 'stat-red' : maxA > 0.5 ? 'stat-orange' : 'stat-yellow';
+    document.getElementById('stat-anomaly-max').className = `stat-value ${ac}`;
+
+    // ── Alert windows ──
+    document.getElementById('stat-alerts').textContent = data.alert_windows ?? '—';
+    document.getElementById('stat-alerts-sub').textContent =
+      `of ${data.total_snapshots ?? '?'} snapshots`;
+
+    // ── Events ──
+    document.getElementById('stat-events').textContent = data.event_count ?? '—';
+    if (data.attack_count !== undefined) {
+      document.getElementById('stat-events-sub').textContent =
+        `${data.attack_count} attack / ${data.benign_count} benign`;
+    }
+
+    // ── Dominant stage ──
+    const ds = data.dominant_stage || 'unknown';
+    document.getElementById('dominant-stage').innerHTML =
+      `<span class="behaviour-pill bhvr-${ds}" style="font-size:14px;padding:4px 14px;">
+        ${ds.replace(/_/g,' ')}
+      </span>`;
+
+    // ── All stages ──
+    const stagesEl = document.getElementById('attack-stages');
+    stagesEl.innerHTML = '';
+    (data.attack_stages || []).forEach(s => {
+      const pill = document.createElement('span');
+      pill.className = `behaviour-pill bhvr-${s}`;
+      pill.style.cssText = 'margin:3px 4px 3px 0;display:inline-block;';
+      pill.textContent = s.replace(/_/g,' ');
+      stagesEl.appendChild(pill);
+    });
+    if (!(data.attack_stages || []).length) {
+      stagesEl.innerHTML = '<span style="color:var(--muted)">None detected</span>';
+    }
+
+    // ── MITRE ──
+    const mitreEl = document.getElementById('mitre-mapping');
+    mitreEl.innerHTML = '';
+    const mitre = data.mitre_mapping || {};
+    if (Object.keys(mitre).length === 0) {
+      mitreEl.innerHTML = '<span style="color:var(--muted)">No mappings</span>';
+    } else {
+      Object.entries(mitre).forEach(([stage, mapping]) => {
+        mitreEl.innerHTML +=
+          `<div class="mitre-tag">
+            <strong>${stage.replace(/_/g,' ')}</strong>
+            ${mapping}
+          </div>`;
+      });
+    }
+
+    // ── Recommendations ──
+    const recEl = document.getElementById('recommendations');
+    recEl.innerHTML = '';
+    (data.recommendations || []).forEach(r => {
+      recEl.innerHTML +=
+        `<div class="rec-item">
+          <span class="rec-icon">›</span>
+          <span>${r}</span>
+        </div>`;
+    });
+    if (!(data.recommendations || []).length) {
+      recEl.innerHTML = '<span style="color:var(--muted)">No recommendations</span>';
+    }
+
+    // ── Images ──
+    const imgs = data.images || {};
+    ['timeline', 'campaign', 'peak'].forEach(key => {
+      const img = document.getElementById(`img-${key}`);
+      const ph  = document.getElementById(`ph-${key}`);
+      if (imgs[key]) {
+        img.src = imgs[key];
+        img.style.display = 'block';
+        ph.style.display  = 'none';
+      } else {
+        img.style.display = 'none';
+        ph.style.display  = 'flex';
+      }
+    });
+
+    // ── Timeline table ──
+    const tbody = document.getElementById('timeline-body');
+    tbody.innerHTML = '';
+    const timeline = data.timeline || [];
+    document.getElementById('timeline-count').textContent =
+      `${timeline.length} stage transitions`;
+
+    timeline.forEach(row => {
+      const anomaly = parseFloat(row.anomaly) || 0;
+      const barColor = anomaly > 0.8 ? '#f85149' : anomaly > 0.5 ? '#f0883e' : '#d29922';
+      const t = row.time ? new Date(row.time).toLocaleTimeString() : row.time;
+      tbody.innerHTML +=
+        `<tr>
+          <td style="color:var(--muted)">${t}</td>
+          <td><span class="behaviour-pill bhvr-${row.behaviour}">${(row.behaviour||'').replace(/_/g,' ')}</span></td>
+          <td style="color:var(--blue)">${row.confidence}</td>
+          <td style="color:var(--orange)">${anomaly.toFixed(3)}</td>
+          <td>
+            <div class="anomaly-bar-wrap">
+              <div class="anomaly-bar" style="width:${anomaly*100}%;background:${barColor};"></div>
+            </div>
+          </td>
+        </tr>`;
+    });
+    if (!timeline.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">No timeline data</td></tr>';
+    }
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      const names = ['timeline','campaign','peak'];
+      t.classList.toggle('active', names[i] === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab-${name}`).classList.add('active');
+  }
+</script>
+</body>
+</html>
