@@ -5,26 +5,27 @@ numpy
 pandas
 python-dotenv
 torch
+torch-geometric
 # SAC Implementation Requirements
 # For Adaptive Honeytoken Deployment Engine
 
 # Core Deep Learning
 # torch==2.0.1
-torchvision==0.15.2
+torchvision>=0.20.0
 
 # Reinforcement Learning
-gym==0.26.2
-numpy==1.24.3
+gymnasium
+numpy
 
 # Visualization
-matplotlib==3.7.1
-seaborn==0.12.2
+matplotlib
+seaborn
 
 # Progress bars
-tqdm==4.65.0
+tqdm
 
 # Data handling
-pandas==2.0.3
+pandas
 
 # Utilities
 python-dateutil==2.8.2
@@ -46,4 +47,4 @@ python-dateutil==2.8.2
 #
 # 4. Verify installation:
 #    python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-#    python -c "import gym; print(f'Gym: {gym.__version__}')"
+#    python -c "import gym; print(f'Gym: {gym.__version__}')"s

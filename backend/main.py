@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from attack_graph_router import router as attack_graph_router
+from threat_attribution_router import router as threat_attribution_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -128,6 +129,7 @@ from database import save_token
 
 app = FastAPI(title="ML Honeytoken Generator API", version="2.0")
 app.include_router(attack_graph_router)
+app.include_router(threat_attribution_router)
 
 # ==============================
 # Initialize ML Generator
@@ -390,7 +392,9 @@ def home():
             "/generate-token": "Generate honeytokens",
             "/generate-token-batch": "Generate multiple batches",
             "/model-info": "Get model information",
-            "/retrain": "Retrain models with new data"
+            "/retrain": "Retrain models with new data",
+            "/api/attack-graph/demo": "Attack behaviour graph (Module 2)",
+            "/api/threat-attribution/demo": "Threat attribution & profiling (Module 4)"
         }
     }
 
