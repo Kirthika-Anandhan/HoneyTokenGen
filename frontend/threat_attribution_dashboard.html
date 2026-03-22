@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Threat Attribution &amp; Attack Profiling</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --bg2:       #161b22;
+      --bg3:       #21262d;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --blue:      #58a6ff;
+      --purple:    #bc8cff;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; }
+
+    .module-nav {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      padding: 10px 24px; font-size: 12px; background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .module-nav a { color: var(--blue); text-decoration: none; }
+    .module-nav a:hover { text-decoration: underline; }
+    .module-nav .muted { color: var(--muted); }
+
+    .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .header-title { font-size: 18px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 10px; }
+    .header-title .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--purple); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .header-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; }
+
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1.2; color: var(--purple); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .pill { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .pill-ext { background: rgba(248,81,73,.15); color: var(--red); }
+    .pill-comp { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .pill-priv { background: rgba(188,140,255,.15); color: var(--purple); }
+    .pill-auto { background: rgba(88,166,255,.15); color: var(--blue); }
+    .pill-und { background: var(--bg3); color: var(--muted); }
+
+    .behaviour-pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .bhvr-benign { background: rgba(63,185,80,.15); color: var(--green); }
+    .bhvr-reconnaissance { background: rgba(88,166,255,.15); color: var(--blue); }
+    .bhvr-lateral_movement { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .bhvr-privilege_escalation { background: rgba(188,140,255,.15); color: var(--purple); }
+    .bhvr-exfiltration { background: rgba(248,81,73,.15); color: var(--red); }
+
+    .dist-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .dist-row:last-child { border-bottom: none; }
+
+    .timeline-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .timeline-table th { text-align: left; padding: 8px 10px; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+    .timeline-table td { padding: 8px 10px; border-bottom: 1px solid rgba(48,54,61,.5); }
+    .timeline-table tr:last-child td { border-bottom: none; }
+
+    .btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--blue); color: #000; }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-bar { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .status-bar.success { border-color: rgba(63,185,80,.4); color: var(--green); }
+    .status-bar.error   { border-color: rgba(248,81,73,.4); color: var(--red); }
+    .status-bar.loading { border-color: rgba(88,166,255,.4); color: var(--blue); }
+
+    .empty { text-align: center; padding: 48px; color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="module-nav">
+  <span class="muted">Modules:</span>
+  <a href="test_generate_token.html">1 · Honeytoken factory</a>
+  <span class="muted">|</span>
+  <a href="attack_graph_dashboard.html">2 · Attack graph</a>
+  <span class="muted">|</span>
+  <a href="dashboard.html">3 · RL deployment</a>
+  <span class="muted">|</span>
+  <strong>4 · Attribution</strong>
+</div>
+
+<div class="header">
+  <div>
+    <div class="header-title">
+      <div class="dot"></div>
+      Threat Attribution &amp; Attack Profiling
+    </div>
+    <div class="header-sub">Heterogeneous Graph Transformer + temporal Transformer — Module 4 / 4</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <span id="last-run" style="color:var(--muted);font-size:12px;">No analysis run yet</span>
+    <button class="btn btn-secondary" onclick="loadLastReport()">Load Last Report</button>
+    <button class="btn btn-primary" id="run-btn" onclick="runDemo()">Run Demo Analysis</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <div id="status-bar" class="status-bar" style="display:none;"></div>
+
+  <div id="empty-state" class="empty">
+    <div style="font-size:40px;margin-bottom:12px;">🎯</div>
+    <div>Run a demo to attribute threat actors and profile attack stages (HGT + sequence model).</div>
+    <br/>
+    <button class="btn btn-primary" onclick="runDemo()">Run Demo Analysis</button>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+
+    <div class="grid-3" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">Primary actor class (heuristic)</div>
+        <div id="attr-primary" class="stat-value" style="font-size:20px;">—</div>
+        <div id="attr-conf" class="stat-label">confidence</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Dominant attack stage</div>
+        <div id="dominant-stage"></div>
+        <div class="stat-label" style="margin-top:8px;">Across time windows</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Neural checkpoint</div>
+        <div id="neural-status" class="stat-value" style="font-size:16px;">—</div>
+        <div id="neural-sub" class="stat-label">HGT + Transformer</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">Attribution distribution (rules)</div>
+        <div id="attr-dist"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Neural attribution (if trained)</div>
+        <div id="neural-attr-dist"><span style="color:var(--muted)">Train with <code>python -m threat_attribution_module.train</code> or run without checkpoint.</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">Per-window profile (heuristic)</div>
+      <div style="overflow-x:auto;">
+        <table class="timeline-table">
+          <thead>
+            <tr>
+              <th>Window start (UTC)</th>
+              <th>Heuristic stage</th>
+              <th>Conf.</th>
+            </tr>
+          </thead>
+          <tbody id="profile-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Neural per-snapshot profile (optional)</div>
+      <div id="neural-profile" style="font-size:13px;color:var(--muted);">—</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API_BASE = 'http://127.0.0.1:8000/api/threat-attribution';
+
+  function setStatus(msg, type='loading') {
+    const el = document.getElementById('status-bar');
+    el.style.display = 'flex';
+    el.className = `status-bar ${type}`;
+    el.innerHTML = type === 'loading'
+      ? `<span class="spinner"></span>${msg}`
+      : msg;
+    if (type !== 'loading') setTimeout(() => el.style.display = 'none', 6000);
+  }
+
+  function setBtn(loading) {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? '<span class="spinner"></span>Analysing...'
+      : 'Run Demo Analysis';
+  }
+
+  function pillClass(actor) {
+    const a = (actor || '').toLowerCase();
+    if (a.includes('external')) return 'pill pill-ext';
+    if (a.includes('compromised')) return 'pill pill-comp';
+    if (a.includes('privileged')) return 'pill pill-priv';
+    if (a.includes('automated')) return 'pill pill-auto';
+    return 'pill pill-und';
+  }
+
+  async function runDemo() {
+    setBtn(true);
+    setStatus('Running HGT + temporal Transformer pipeline (may take a minute)...');
+    document.getElementById('empty-state').style.display = 'none';
+
+    try {
+      const res  = await fetch(`${API_BASE}/demo`);
+      const json = await res.json();
+      if (json.status !== 'success') throw new Error(json.detail || json.message || 'Request failed');
+      renderDashboard(json.data);
+      setStatus('Analysis complete.', 'success');
+    } catch(e) {
+      setStatus(`Error: ${e.message}`, 'error');
+      document.getElementById('empty-state').style.display = 'block';
+    } finally {
+      setBtn(false);
+    }
+  }
+
+  async function loadLastReport() {
+    setStatus('Loading last saved report...');
+    try {
+      const res  = await fetch(`${API_BASE}/report`);
+      const json = await res.json();
+      if (json.status !== 'success') throw new Error(json.detail || 'No report');
+      renderDashboard(json.data);
+      setStatus('Last report loaded.', 'success');
+    } catch(e) {
+      setStatus(`Error: ${e.message}`, 'error');
+    }
+  }
+
+  function renderDashboard(data) {
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    const ts = data.generated_at ? new Date(data.generated_at).toLocaleString() : '';
+    document.getElementById('last-run').textContent = ts ? `Last run: ${ts}` : '';
+
+    const ca = data.campaign_attribution || {};
+    document.getElementById('attr-primary').innerHTML =
+      `<span class="${pillClass(ca.primary_actor_class)}">${(ca.primary_actor_class || '—').replace(/_/g, ' ')}</span>`;
+    document.getElementById('attr-conf').textContent =
+      `Confidence ${(ca.confidence != null ? ca.confidence : '—')}`;
+
+    const dist = ca.distribution || {};
+    const distEl = document.getElementById('attr-dist');
+    distEl.innerHTML = '';
+    Object.entries(dist).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+      distEl.innerHTML += `<div class="dist-row"><span>${k.replace(/_/g,' ')}</span><span>${(v*100).toFixed(1)}%</span></div>`;
+    });
+
+    const ap = data.attack_profile || {};
+    const dom = ap.dominant_stage || '—';
+    document.getElementById('dominant-stage').innerHTML =
+      `<span class="behaviour-pill bhvr-${dom}">${dom.replace(/_/g,' ')}</span>`;
+
+    const tbody = document.getElementById('profile-body');
+    tbody.innerHTML = '';
+    (ap.per_snapshot || []).forEach(row => {
+      const t = row.time_start ? new Date(row.time_start).toLocaleString() : '—';
+      const st = row.heuristic_stage || '—';
+      const cf = row.heuristic_confidence != null ? row.heuristic_confidence : '—';
+      tbody.innerHTML += `<tr>
+        <td style="color:var(--muted)">${t}</td>
+        <td><span class="behaviour-pill bhvr-${st}">${st.replace(/_/g,' ')}</span></td>
+        <td>${cf}</td>
+      </tr>`;
+    });
+    if (!(ap.per_snapshot || []).length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center;">No windows</td></tr>';
+    }
+
+    const nm = data.neural_model || {};
+    if (nm.available) {
+      document.getElementById('neural-status').textContent = 'Loaded';
+      document.getElementById('neural-sub').textContent = nm.checkpoint || 'checkpoint';
+      const na = nm.attribution_distribution || {};
+      let h = '';
+      Object.entries(na).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+        h += `<div class="dist-row"><span>${k.replace(/_/g,' ')}</span><span>${(v*100).toFixed(1)}%</span></div>`;
+      });
+      document.getElementById('neural-attr-dist').innerHTML = h || '—';
+
+      const pp = nm.per_snapshot_profile || [];
+      if (pp.length) {
+        const lines = pp.map((p,i) => `${i+1}. ${p.stage} (${Object.entries(p.distribution||{}).sort((a,b)=>b[1]-a[1])[0]?.[0]?.replace(/_/g,' ') || ''})`);
+        document.getElementById('neural-profile').innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit;">' + lines.join('\n') + '</pre>';
+      } else {
+        document.getElementById('neural-profile').textContent = '—';
+      }
+    } else {
+      document.getElementById('neural-status').textContent = 'Not loaded';
+      document.getElementById('neural-sub').textContent = 'Run training to enable neural head';
+      document.getElementById('neural-attr-dist').innerHTML =
+        '<span style="color:var(--muted)">Heuristic rules still provide attribution. Train: <code>python -m threat_attribution_module.train</code></span>';
+      if (nm.error) {
+        document.getElementById('neural-attr-dist').innerHTML += `<br/><span style="color:var(--red)">${nm.error}</span>`;
+      }
+      document.getElementById('neural-profile').textContent = '—';
+    }
+  }
+</script>
+</body>
+</html>
