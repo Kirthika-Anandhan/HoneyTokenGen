@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HoneyGuard — AI Honeytoken Factory</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--red:#ef4444;--orange:#f97316;--yellow:#eab308;--green:#22c55e;--blue:#3b82f6;--purple:#8b5cf6;--gray:#6b7280;--accent:#6366f1;--dark:#030712;--panel:#0f172a;--border:#1e293b;--muted:#64748b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--dark);color:#e2e8f0;overflow:hidden;height:100vh;display:flex}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--panel)}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+
+/* Nav */
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;cursor:pointer;color:#94a3b8;transition:all .2s;font-size:13px;position:relative}
+.nav-item:hover{background:var(--border);color:#e2e8f0}
+.nav-item.active{background:var(--border);color:#fff;border-left:3px solid var(--accent)}
+
+/* Pipeline */
+.pipe-dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0;transition:all .3s}
+.pipe-dot.gray{background:#334155}
+.pipe-dot.green{background:var(--green)}
+.pipe-dot.red{background:var(--red);animation:pdot 1.2s ease-in-out infinite}
+@keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:50%;margin-left:6px;padding:0 4px}
+.sev-CRITICAL{background:#7f1d1d;color:#fca5a5;border:1px solid var(--red)}
+.sev-HIGH{background:#431407;color:#fdba74;border:1px solid var(--orange)}
+.sev-MEDIUM{background:#713f12;color:#fde68a;border:1px solid var(--yellow)}
+.sev-LOW{background:#052e16;color:#86efac;border:1px solid var(--green)}
+
+/* Buttons */
+.btn-p{background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:600;cursor:pointer;transition:all .2s;font-size:13px}
+.btn-p:hover{background:#4f46e5;transform:translateY(-1px)}
+.btn-p:disabled{background:#334155;cursor:not-allowed;transform:none}
+.btn-g{background:var(--border);color:#94a3b8;border:1px solid #334155;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .2s}
+.btn-g:hover{background:#334155;color:#e2e8f0}
+.btn-r{background:var(--red);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;transition:all .2s}
+.btn-r:hover{background:#b91c1c}
+.btn-red-sm{background:rgba(239,68,68,.15);color:var(--red);border:1px solid var(--red);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px}
+.btn-green-sm{background:rgba(34,197,94,.15);color:var(--green);border:1px solid var(--green);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px}
+
+/* Cards */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px}
+.metric-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;text-align:center}
+
+/* Inputs */
+input,select{background:var(--panel);border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:8px 12px;font-size:13px;outline:none;transition:border-color .2s}
+input:focus,select:focus{border-color:var(--accent)}
+
+/* Animations */
+.slide-in{animation:si .35s ease-out}
+@keyframes si{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.slide-r{animation:sr .3s ease-out}
+@keyframes sr{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* Toggle switch */
+.toggle{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#334155;border-radius:24px;transition:.3s}
+.slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+input:checked+.slider{background:var(--green)}
+input:checked+.slider:before{transform:translateX(20px)}
+
+/* Misc */
+.token-box{font-family:'Courier New',monospace;background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:12px;word-break:break-all;font-size:12px;color:#a5f3fc}
+.score-bar-wrap{height:12px;background:var(--border);border-radius:6px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:6px;transition:width .8s ease,background .5s}
+.trap-dot{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;animation:pdot 2s ease-in-out infinite}
+.stage-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.stage-reconnaissance{background:rgba(139,92,246,.2);color:#c4b5fd}
+.stage-lateral_movement{background:rgba(6,182,212,.2);color:#67e8f9}
+.stage-privilege_escalation{background:rgba(249,115,22,.2);color:#fdba74}
+.stage-exfiltration{background:rgba(239,68,68,.2);color:#fca5a5}
+.stage-blocked{background:rgba(107,114,128,.2);color:#d1d5db}
+
+/* Map pulse marker */
+@keyframes mapPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.map-pulse{animation:mapPulse 1.5s ease-in-out infinite}
+
+/* Mode card */
+.mode-card{border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .25s}
+.mode-card:hover{border-color:#334155;background:rgba(255,255,255,.03)}
+
+/* Toast */
+#toast-root{position:fixed;bottom:56px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{padding:11px 16px;border-radius:8px;background:var(--panel);color:#e2e8f0;border-left:4px solid var(--accent);font-size:13px;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,.4);animation:sr .3s ease-out;pointer-events:auto}
+.toast.success{border-left-color:var(--green)}
+.toast.warning{border-left-color:var(--orange)}
+.toast.error{border-left-color:var(--red)}
+
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper{background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.leaflet-popup-tip{background:#0f172a}
+.leaflet-popup-content{margin:0;padding:0}
+</style>
+</head>
+<body>
+<div id="toast-root"></div>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside style="width:220px;min-width:220px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">
+  <div style="padding:18px 16px;border-bottom:1px solid var(--border)">
+    <div style="font-size:17px;font-weight:700;color:#fff">🍯 HoneyGuard</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px">AI Honeytoken Factory v5</div>
+  </div>
+  <nav style="padding:10px 8px;flex:1;overflow-y:auto">
+    <div class="nav-item active" data-view="factory"    onclick="showView('factory')">   <span>◆</span><span>Factory</span></div>
+    <div class="nav-item"        data-view="deploy"     onclick="showView('deploy')">    <span>⬡</span><span>Deploy</span></div>
+    <div class="nav-item"        data-view="monitor"    onclick="showView('monitor')">   <span>◉</span><span>Monitor</span></div>
+    <div class="nav-item"        data-view="alerts"     onclick="showView('alerts')">    <span>⚠</span><span>Alerts</span><span class="badge" id="alert-badge" style="display:none">0</span></div>
+    <div class="nav-item"        data-view="map"        onclick="showView('map')">       <span>◎</span><span>Attack Map</span></div>
+    <div class="nav-item"        data-view="prevention" onclick="showView('prevention')"><span>🛡</span><span>Prevention</span><span class="badge" id="prev-badge" style="display:none;background:var(--orange)">!</span></div>
+    <div class="nav-item"        data-view="reports"    onclick="showView('reports')">   <span>▤</span><span>Reports</span></div>
+  </nav>
+  <!-- Pipeline -->
+  <div style="padding:10px 16px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em">Pipeline</div>
+    <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#94a3b8;flex-wrap:wrap">
+      <span class="pipe-dot gray" id="pipe-gen"></span>Gen
+      <span style="color:#334155">→</span>
+      <span class="pipe-dot gray" id="pipe-deploy"></span>Deploy
+      <span style="color:#334155">→</span>
+      <span class="pipe-dot gray" id="pipe-monitor"></span>Watch
+      <span style="color:#334155">→</span>
+      <span class="pipe-dot gray" id="pipe-detect"></span>Alert
+    </div>
+  </div>
+  <!-- System -->
+  <div style="padding:10px 16px">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em">System</div>
+    <div style="font-size:12px;display:flex;flex-direction:column;gap:5px">
+      <div><span style="color:var(--green)">●</span> <span style="color:#94a3b8">MongoDB</span></div>
+      <div><span id="sse-dot" style="color:#475569">●</span> <span style="color:#94a3b8" id="sse-txt">SSE Connecting</span></div>
+      <div><span style="color:var(--green)">●</span> <span style="color:#94a3b8">6 Traps Active</span></div>
+      <div><span id="mode-dot" style="color:var(--green)">●</span> <span style="color:#94a3b8" id="mode-txt">Monitor Mode</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<div class="flex flex-col flex-1 overflow-hidden">
+
+<!-- METRICS BAR -->
+<div style="background:#1e293b;height:46px;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;padding:0 18px;flex-shrink:0">
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-weight:700;color:#fff;font-size:13px">HoneyGuard</span>
+    <span id="sse-live" style="font-size:11px;background:#052e16;color:var(--green);padding:2px 8px;border-radius:12px;border:1px solid var(--green)">● CONNECTING</span>
+  </div>
+  <div style="display:flex;gap:20px;font-size:12px;color:var(--muted)">
+    <span>Tokens: <strong id="m-tokens" style="color:#e2e8f0">—</strong></span>
+    <span>Deployed: <strong id="m-deployed" style="color:#e2e8f0">—</strong></span>
+    <span>Alerts: <strong id="m-alerts" style="color:#e2e8f0">—</strong></span>
+    <span>Unique IPs: <strong id="m-ips" style="color:#e2e8f0">—</strong></span>
+  </div>
+</div>
+
+<!-- VIEWS -->
+<main class="flex-1 overflow-auto p-4" style="background:var(--dark)">
+
+<!-- ──────────────── FACTORY ──────────────── -->
+<div id="view-factory">
+  <div style="max-width:860px;margin:0 auto">
+    <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">🔐 Honeytoken Factory</h1>
+    <p style="color:var(--muted);margin-bottom:20px;font-size:13px">Generate AI-powered honeytokens using VAE + Discriminator models</p>
+    <div class="card" style="margin-bottom:18px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div><label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Token Type</label>
+          <select id="tokenType" style="width:100%">
+            <option value="api">API Key</option>
+            <option value="jwt">JWT Token</option>
+            <option value="github">GitHub Token</option>
+            <option value="db_record">Database Credentials</option>
+            <option value="cloud">Cloud API Key</option>
+          </select></div>
+        <div><label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Generation Method</label>
+          <select id="method" style="width:100%">
+            <option value="hybrid">Hybrid (Recommended)</option>
+            <option value="vae">VAE (Fast)</option>
+            <option value="diffusion">Diffusion (High Quality)</option>
+          </select></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">Quantity (1–500)</label>
+        <input type="number" id="quantity" min="1" max="500" value="500" style="width:140px">
+        <span style="color:var(--muted);font-size:12px;margin-left:10px">Max 500 tokens per batch</span>
+      </div>
+      <button class="btn-p" id="genBtn" onclick="generateTokens()">🚀 Generate Honeytokens</button>
+      <div id="gen-loading" style="display:none;margin-top:10px;color:var(--accent);font-size:13px">⏳ Generating tokens…</div>
+    </div>
+    <div id="whats-next" style="display:none" class="card slide-in" style="margin-bottom:18px">
+      <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:8px">✓ Token Ready</div>
+      <div id="wn-info" style="color:#94a3b8;font-size:12px;margin-bottom:10px"></div>
+      <div class="token-box" id="wn-val" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-g" onclick="copyToken()">📋 Copy Token</button>
+        <button class="btn-g" onclick="copyPostman()">📬 Copy for Postman</button>
+        <button class="btn-p" onclick="deployThisToken()">→ Deploy This Token</button>
+      </div>
+    </div>
+    <div id="result"></div>
+  </div>
+</div>
+
+<!-- ──────────────── DEPLOY ──────────────── -->
+<div id="view-deploy" class="hidden">
+  <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">⬡ Deploy Honeytokens</h1>
+  <p style="color:var(--muted);margin-bottom:18px;font-size:13px">Place tokens in lure files and activate trap endpoints</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px">🤖 RL Recommendation (SAC)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--border);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Deploy Area</div><div id="rec-area" style="font-weight:600;color:#a5f3fc;font-size:13px">—</div></div>
+          <div style="background:var(--border);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Token Type</div><div id="rec-type" style="font-weight:600;color:#a5f3fc;font-size:13px">—</div></div>
+          <div style="background:var(--border);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Priority</div><div id="rec-priority" style="font-weight:600;color:#fde68a;font-size:13px">—</div></div>
+          <div style="background:var(--border);padding:10px;border-radius:8px"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Confidence</div><div id="rec-confidence" style="font-weight:600;color:#86efac;font-size:13px">—</div></div>
+        </div>
+        <button class="btn-g" onclick="loadRLRec()">↻ Refresh</button>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px">📦 Deploy Token</div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:12px">Writes latest generated token to lure files and activates trap endpoints.</p>
+        <button class="btn-p" id="deployBtn" onclick="deployToken()" style="width:100%">⚡ Deploy Token Now</button>
+        <div id="deploy-result" style="display:none;margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;color:#fff;margin-bottom:8px">📮 Postman Setup</div>
+        <div style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:#94a3b8">
+          <div style="margin-bottom:4px"><span style="color:var(--muted)">Method:</span> GET &nbsp; <span style="color:var(--muted)">URL:</span> <span style="color:#a5f3fc">http://192.168.1.9:5000/api/data</span></div>
+          <div style="margin-bottom:8px"><span style="color:var(--muted)">Header:</span> <span id="pm-hint" style="color:#a5f3fc">Authorization: Bearer &lt;token&gt;</span></div>
+          <button class="btn-g" onclick="copyPM()" style="font-size:11px">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:#fff">Active Deployments</span>
+          <button class="btn-g" onclick="loadDeployments()" style="font-size:11px">↻</button>
+        </div>
+        <div id="active-deployments"><p style="color:#475569;font-size:12px">No active deployments</p></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">🪤 Trap Endpoints Watching</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <!-- each trap row -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--dark);border-radius:6px;font-size:12px"><span style="color:#94a3b8">GET <span style="color:#a5f3fc">/api/data</span></span><span><span class="trap-dot"></span> <span style="color:var(--green);font-size:11px">Watching</span></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--dark);border-radius:6px;font-size:12px"><span style="color:#94a3b8">POST <span style="color:#a5f3fc">/api/login</span></span><span><span class="trap-dot"></span> <span style="color:var(--green);font-size:11px">Watching</span></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--dark);border-radius:6px;font-size:12px"><span style="color:#94a3b8">GET <span style="color:#a5f3fc">/api/admin</span></span><span><span class="trap-dot"></span> <span style="color:var(--green);font-size:11px">Watching</span></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--dark);border-radius:6px;font-size:12px"><span style="color:#94a3b8">GET <span style="color:#a5f3fc">/api/config</span></span><span><span class="trap-dot"></span> <span style="color:var(--green);font-size:11px">Watching</span></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--dark);border-radius:6px;font-size:12px"><span style="color:#94a3b8">GET <span style="color:#a5f3fc">/api/files</span></span><span><span class="trap-dot"></span> <span style="color:var(--green);font-size:11px">Watching</span></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--dark);border-radius:6px;font-size:12px"><span style="color:#94a3b8">GET <span style="color:#a5f3fc">/api/user</span></span><span><span class="trap-dot"></span> <span style="color:var(--green);font-size:11px">Watching</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── MONITOR ──────────────── -->
+<div id="view-monitor" class="hidden">
+  <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">◉ Live Monitor</h1>
+  <p style="color:var(--muted);margin-bottom:18px;font-size:13px">Real-time attack detection and anomaly scoring</p>
+  <div style="display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:14px">
+
+    <!-- Left: Live feed -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:600;color:#fff">Live Feed</span>
+        <span class="trap-dot"></span><span style="font-size:11px;color:var(--green)">Watching</span>
+      </div>
+      <div id="monitor-feed" style="display:flex;flex-direction:column;gap:7px;max-height:480px;overflow-y:auto">
+        <p style="color:#475569;font-size:12px">No events yet…</p>
+      </div>
+    </div>
+
+    <!-- Center: Attack graph + cumulative IP chart -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:#fff">⬡ Attack Graph Intelligence</span>
+          <button class="btn-g" onclick="refreshMonitor()" style="font-size:11px">↻</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+          <div style="background:var(--border);padding:8px;border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:2px">Risk</div><div id="ag-risk" style="font-weight:700;font-size:12px;color:var(--red)">—</div></div>
+          <div style="background:var(--border);padding:8px;border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:2px">Anomaly</div><div id="ag-anomaly" style="font-weight:700;font-size:12px;color:var(--orange)">—</div></div>
+          <div style="background:var(--border);padding:8px;border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:2px">Stage</div><div id="ag-stage" style="font-weight:700;font-size:10px;color:#a5f3fc">—</div></div>
+          <div style="background:var(--border);padding:8px;border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--muted);margin-bottom:2px">Events</div><div id="ag-events" style="font-weight:700;font-size:12px;color:#818cf8">—</div></div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Anomaly Timeline</div>
+          <div style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:6px"><canvas id="anomaly-chart" height="110"></canvas></div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Attack Stage Flow</div>
+          <div id="stage-flow" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span style="color:#475569;font-size:11px">No detections yet</span></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em">MITRE</div>
+        <div id="ag-mitre" style="background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;color:#94a3b8;margin-bottom:8px">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">RECENT ATTACKER</div>
+        <div id="ag-ip" style="color:#fca5a5;font-size:13px;font-weight:700">—</div>
+      </div>
+
+      <!-- Cumulative IP attacks chart -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">📊 Cumulative Attacks per IP</div>
+        <div style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:8px"><canvas id="ip-chart" height="120"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Right: Anomaly gauge -->
+    <div class="card" style="text-align:center">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:16px">Current Threat Level</div>
+      <div id="anomaly-score" style="font-size:52px;font-weight:700;color:#e2e8f0;line-height:1;margin-bottom:10px">0.000</div>
+      <div style="margin:0 auto 12px;max-width:160px">
+        <div class="score-bar-wrap"><div class="score-bar-fill" id="score-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+      <div id="risk-level" style="font-size:17px;font-weight:700;color:var(--green);letter-spacing:.05em;margin-bottom:5px">BENIGN</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Stage: <span id="attack-stage" style="color:#94a3b8">—</span></div>
+      <div style="font-size:10px;color:#475569" id="mitre">—</div>
+      <div style="margin-top:16px;font-size:10px;color:#334155">Auto-refreshes every 5s</div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── ALERTS ──────────────── -->
+<div id="view-alerts" class="hidden">
+  <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">⚠ Alert Feed</h1>
+  <p style="color:var(--muted);margin-bottom:16px;font-size:13px">Real-time honeytoken breach events</p>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+    <div class="metric-card"><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Total</div><div style="font-size:28px;font-weight:700;color:#f87171" id="a-total">—</div></div>
+    <div class="metric-card"><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Critical</div><div style="font-size:28px;font-weight:700;color:var(--red)" id="a-critical">—</div></div>
+    <div class="metric-card"><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">High</div><div style="font-size:28px;font-weight:700;color:var(--orange)" id="a-high">—</div></div>
+    <div class="metric-card"><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Unique IPs</div><div style="font-size:28px;font-weight:700;color:#818cf8" id="a-ips">—</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:14px">
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:#fff">Alert Events</span>
+        <button class="btn-g" onclick="loadAlerts()">↻ Refresh</button>
+      </div>
+      <div id="alerts-list" style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto"></div>
+    </div>
+    <div class="card" style="align-self:start">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px">🎯 Threat Attribution</div>
+      <div style="margin-bottom:8px"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Primary Actor</div><div id="attr-actor" style="font-weight:700;color:#c084fc;font-size:14px">—</div></div>
+      <div style="margin-bottom:12px"><div style="font-size:10px;color:var(--muted);margin-bottom:3px">Confidence</div><div id="attr-conf" style="font-weight:600;color:#e2e8f0;font-size:13px">—</div></div>
+      <div id="attr-dist" style="display:flex;flex-direction:column;gap:7px"></div>
+      <div style="margin-top:10px"><div style="font-size:10px;color:var(--muted);margin-bottom:5px">Attack Stages</div><div id="attr-stages" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── ATTACK MAP ──────────────── -->
+<div id="view-map" class="hidden">
+  <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">◎ Attack Map</h1>
+  <p style="color:var(--muted);margin-bottom:16px;font-size:13px">Real-time geolocation of attack origins</p>
+
+  <!-- Stat cards -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">
+    <div class="metric-card"><div style="font-size:22px;margin-bottom:3px">🎯</div><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Total Attacks</div><div style="font-size:26px;font-weight:700;color:#e2e8f0" id="map-total">0</div></div>
+    <div class="metric-card"><div style="font-size:22px;margin-bottom:3px">🌍</div><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Countries</div><div style="font-size:26px;font-weight:700;color:#e2e8f0" id="map-countries">0</div></div>
+    <div class="metric-card" style="border-color:var(--red)"><div style="font-size:22px;margin-bottom:3px">🔴</div><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">Critical Threats</div><div style="font-size:26px;font-weight:700;color:var(--red)" id="map-critical">0</div></div>
+    <div class="metric-card" style="border-color:var(--green)"><div style="font-size:22px;margin-bottom:3px">🛡</div><div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase">IPs Blocked</div><div style="font-size:26px;font-weight:700;color:var(--green)" id="map-blocked">0</div></div>
+  </div>
+
+  <!-- Map -->
+  <div style="position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px">
+    <div id="attack-map" style="height:420px;width:100%;background:var(--panel)"></div>
+
+    <!-- Empty state -->
+    <div id="map-empty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#475569;pointer-events:none;display:none">
+      <div style="font-size:40px">🗺</div>
+      <div style="font-size:14px;margin-top:6px">No attacks detected yet</div>
+      <div style="font-size:12px;color:#334155;margin-top:4px">Trigger a honeytoken in Postman to see attack origins here</div>
+    </div>
+
+    <!-- Legend -->
+    <div style="position:absolute;bottom:14px;left:14px;background:rgba(15,23,42,.92);border:1px solid var(--border);padding:10px 14px;border-radius:8px;font-size:11px;z-index:1000">
+      <div style="color:#94a3b8;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:10px">Legend</div>
+      <div style="display:flex;flex-direction:column;gap:4px;color:#e2e8f0">
+        <div><span style="color:var(--red)">●</span> Critical &nbsp;<span style="color:var(--orange)">●</span> High</div>
+        <div><span style="color:var(--yellow)">●</span> Medium &nbsp;<span style="color:var(--gray)">✕</span> Blocked</div>
+        <div style="color:#475569;margin-top:3px;font-size:10px">Size = attack frequency</div>
+      </div>
+    </div>
+
+    <!-- Live badge -->
+    <div style="position:absolute;top:14px;right:14px;background:rgba(15,23,42,.92);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:11px;z-index:1000;display:flex;align-items:center;gap:6px">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--green);animation:pdot 2s infinite"></div>
+      <span style="color:var(--green)">LIVE</span>
+    </div>
+
+    <!-- Refresh -->
+    <div style="position:absolute;top:14px;left:14px;z-index:1000">
+      <button class="btn-g" onclick="loadMap()" style="font-size:11px;background:rgba(15,23,42,.92)">↻ Refresh Map</button>
+    </div>
+  </div>
+
+  <!-- Bottom panels -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">🌍 Top Attacking Countries</div>
+      <div id="top-countries"><div style="color:#475569;font-size:12px">No data yet</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">⏱ Recent Attacks</div>
+      <div id="attack-timeline" style="max-height:180px;overflow-y:auto"><div style="color:#475569;font-size:12px">No attacks yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── PREVENTION ──────────────── -->
+<div id="view-prevention" class="hidden">
+  <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">🛡 Prevention Module</h1>
+  <p style="color:var(--muted);margin-bottom:16px;font-size:13px">Analyst-controlled response to detected attacks</p>
+
+  <!-- Mode selector -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:4px">Prevention Mode</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Choose how HoneyGuard responds to detected attacks. Changes take effect immediately.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+      <div class="mode-card" id="mc-monitor" onclick="setMode('monitor')">
+        <div style="font-size:22px;margin-bottom:7px">🔍</div>
+        <div style="font-weight:600;margin-bottom:5px;color:var(--green)">Monitor Only</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5">Detect and log attacks only. Zero prevention actions. Safe for research and academic use.</div>
+        <div id="mc-monitor-badge" style="margin-top:8px;font-size:10px;background:#052e16;color:var(--green);padding:3px 8px;border-radius:4px;display:inline-block">✓ ACTIVE</div>
+      </div>
+
+      <div class="mode-card" id="mc-alert_recommend" onclick="setMode('alert_recommend')">
+        <div style="font-size:22px;margin-bottom:7px">🤝</div>
+        <div style="font-weight:600;margin-bottom:5px;color:var(--orange)">Alert + Recommend</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5">Shows recommended actions. You approve each one before execution. Full analyst control.</div>
+        <div id="mc-alert_recommend-badge" style="margin-top:8px;font-size:10px;color:var(--muted)">Click to activate</div>
+      </div>
+
+      <div class="mode-card" id="mc-auto_prevent" onclick="setMode('auto_prevent')">
+        <div style="font-size:22px;margin-bottom:7px">🛡</div>
+        <div style="font-weight:600;margin-bottom:5px;color:var(--red)">Auto Prevent</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5">Automatically blocks, rotates tokens, quarantines attackers. For production environments.</div>
+        <div id="mc-auto_prevent-badge" style="margin-top:8px;font-size:10px;color:var(--muted)">Click to activate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending recommendations (alert_recommend mode) -->
+  <div id="recs-panel" style="display:none;background:var(--panel);border:1px solid var(--orange);border-radius:12px;padding:18px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:600;color:var(--orange)">⚡ Pending Approval</span>
+      <span id="rec-count" style="background:var(--orange);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">0</span>
+    </div>
+    <div id="recs-list"><div style="color:#475569;font-size:12px">No pending recommendations</div></div>
+    <button class="btn-g" onclick="loadRecs()" style="margin-top:8px;font-size:11px">↻ Refresh</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <!-- Blocked IPs -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:#fff">🚫 Blocked IPs</span>
+        <span id="blocked-count" style="color:var(--red);font-size:12px">0 active</span>
+      </div>
+      <div id="blocked-list"><div style="color:#475569;font-size:12px">No IPs blocked</div></div>
+    </div>
+    <!-- Prevention log -->
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">📋 Prevention Log</div>
+      <div id="prev-log" style="max-height:200px;overflow-y:auto"><div style="color:#475569;font-size:12px">No actions yet</div></div>
+    </div>
+  </div>
+
+  <!-- Auto-prevent settings (auto_prevent mode) -->
+  <div id="auto-panel" style="display:none;background:var(--panel);border:1px solid var(--red);border-radius:12px;padding:18px">
+    <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:14px">🛡 Auto-Prevention Settings</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--border);border-radius:8px">
+        <div><div style="font-size:12px;font-weight:600">🚫 Auto-Block Attacker IP</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Add to blocklist for selected duration</div></div>
+        <label class="toggle"><input type="checkbox" id="t-block" checked onchange="saveSettings()"><span class="slider"></span></label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--border);border-radius:8px">
+        <div><div style="font-size:12px;font-weight:600">🔄 Auto-Rotate Triggered Token</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Replace compromised token automatically</div></div>
+        <label class="toggle"><input type="checkbox" id="t-rotate" checked onchange="saveSettings()"><span class="slider"></span></label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--border);border-radius:8px">
+        <div><div style="font-size:12px;font-weight:600">🔬 Auto-Quarantine for Analysis</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Enhanced logging of all attacker activity</div></div>
+        <label class="toggle"><input type="checkbox" id="t-quar" checked onchange="saveSettings()"><span class="slider"></span></label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--border);border-radius:8px">
+        <div><div style="font-size:12px;font-weight:600">📄 Auto-Generate Incident Report</div><div style="font-size:11px;color:var(--muted);margin-top:2px">PDF saved automatically on detection</div></div>
+        <label class="toggle"><input type="checkbox" id="t-report" checked onchange="saveSettings()"><span class="slider"></span></label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--border);border-radius:8px">
+        <div><div style="font-size:12px;font-weight:600">⏱ Block Duration</div><div style="font-size:11px;color:var(--muted);margin-top:2px">How long to block attacker IPs</div></div>
+        <select id="t-dur" onchange="saveSettings()" style="width:auto;font-size:12px">
+          <option value="30">30 min</option><option value="60" selected>1 hour</option>
+          <option value="360">6 hours</option><option value="1440">24 hours</option>
+          <option value="10080">7 days</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── REPORTS ──────────────── -->
+<div id="view-reports" class="hidden">
+  <h1 style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">▤ Breach Reports</h1>
+  <p style="color:var(--muted);margin-bottom:20px;font-size:13px">Generate and download PDF intelligence reports</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="card">
+      <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:10px">📄 Breach Intelligence Report</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Pulls all data automatically from MongoDB — token data, detection results, attribution, prevention log.</div>
+      <div id="report-checks" style="margin-bottom:18px;display:flex;flex-direction:column;gap:7px"><div style="color:#475569;font-size:12px">Loading…</div></div>
+      <button class="btn-r" id="report-btn" onclick="downloadReport()" style="width:100%;padding:13px;font-size:14px">⬇ Download Full Report</button>
+      <div id="report-status" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:600;color:#fff">Report History</span>
+        <button class="btn-g" onclick="loadReportHistory()" style="font-size:11px">↻</button>
+      </div>
+      <div id="report-history" style="max-height:380px;overflow-y:auto"><p style="color:#475569;font-size:12px">No reports yet</p></div>
+    </div>
+  </div>
+</div>
+
+</main><!-- /views -->
+
+<!-- STATUS BAR -->
+<div style="background:#1e293b;height:30px;border-top:1px solid #334155;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:10px;color:#475569;flex-shrink:0">
+  <div style="display:flex;gap:14px">
+    <span id="sb-sse">SSE: Connecting…</span>
+    <span>MongoDB: honeyguard</span>
+    <span>Traps: /api/data /api/admin /api/login /api/config /api/files /api/user</span>
+  </div>
+  <div>Last refresh: <span id="sb-time">—</span></div>
+</div>
+</div><!-- /main col -->
+
+<!-- ═══════════ BREACH PANEL ═══════════ -->
+<div id="breach-panel" style="position:fixed;right:-420px;top:0;width:400px;height:100vh;background:#1a0000;border-left:2px solid var(--red);z-index:1000;transition:right .3s ease;overflow-y:auto">
+  <div style="background:var(--red);padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:15px;font-weight:700;color:#fff">🔴 BREACH DETECTED</div>
+    <button onclick="closeBreachPanel()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button>
+  </div>
+  <div style="padding:18px;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:11px;color:#f87171" id="bp-time">—</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">ATTACKER IP</div><div id="bp-ip" style="font-weight:700;color:#fca5a5;font-size:14px">—</div></div>
+      <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">LOCATION</div><div id="bp-geo" style="color:#fca5a5;font-size:11px">—</div></div>
+      <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">ENDPOINT</div><div id="bp-endpoint" style="font-weight:700;color:#fca5a5;font-size:12px">—</div></div>
+      <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">STAGE</div><div id="bp-stage" style="font-weight:700;color:#fca5a5">—</div></div>
+      <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">SCORE</div><div id="bp-score" style="font-weight:700;color:#fca5a5;font-size:18px">—</div></div>
+      <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">SEVERITY</div><div id="bp-severity" style="font-weight:700;color:#fca5a5">—</div></div>
+    </div>
+    <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">TOKEN (MASKED)</div><div id="bp-token" style="font-family:monospace;color:#fca5a5;font-size:12px">—</div></div>
+    <div style="background:#2d0000;padding:10px;border-radius:8px"><div style="font-size:9px;color:#f87171;margin-bottom:3px">USER AGENT</div><div id="bp-agent" style="color:#f87171;font-size:11px;word-break:break-all">—</div></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn-g" onclick="showView('alerts');closeBreachPanel()" style="flex:1">View Alerts</button>
+      <button class="btn-r" onclick="downloadReport()" style="flex:1;padding:9px">Download Report</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ────────────────────────────────────────────────────
+let currentView   = 'factory';
+let lastTokens    = [];
+let _deployedTV   = '';
+let alertBadge    = 0;
+let monitorTimer  = null;
+let _anomalyChart = null;
+let _ipChart      = null;
+let _leafletMap   = null;
+let _mapMarkers   = [];
+let _currentMode  = 'monitor';
+
+// ── Helpers ──────────────────────────────────────────────────
+function esc(s){ return s==null?'—':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+function _parseTs(iso){
+  if(!iso) return null;
+  const s=String(iso).trim().replace(/\+00:00Z$/,'Z').replace(' ','T');
+  const d=new Date(s); return isNaN(d.getTime())?null:d;
+}
+function fmtTime(iso){ const d=_parseTs(iso); return d?d.toLocaleTimeString():(iso||'—') }
+function fmtAgo(iso){
+  const d=_parseTs(iso); if(!d) return iso||'—';
+  const s=Math.floor((Date.now()-d)/1000);
+  if(s<60) return `${s}s ago`; if(s<3600) return `${Math.floor(s/60)}m ago`;
+  return d.toLocaleString();
+}
+
+function showToast(msg, type='info'){
+  const t=document.createElement('div');
+  t.className=`toast ${type}`; t.textContent=msg;
+  document.getElementById('toast-root').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s';
+    setTimeout(()=>t.remove(),350); }, 4000);
+}
+
+// ── Navigation ───────────────────────────────────────────────
+function showView(name){
+  document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
+  document.getElementById('view-'+name).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el=document.querySelector(`[data-view="${name}"]`);
+  if(el) el.classList.add('active');
+  currentView=name;
+  if(name==='deploy')      { loadRLRec(); loadDeployments(); }
+  if(name==='monitor')     { refreshMonitor(); startMonitorLoop(); }
+  if(name==='alerts')      { loadAlerts(); loadAttrib(); }
+  if(name==='map')         { initMap(); loadMap(); }
+  if(name==='prevention')  { loadPrevSettings(); loadRecs(); loadBlockedIPs(); loadPrevLog(); }
+  if(name==='reports')     { loadReportChecks(); loadReportHistory(); }
+}
+function startMonitorLoop(){
+  if(monitorTimer) clearInterval(monitorTimer);
+  monitorTimer=setInterval(refreshDetectionStatus, 5000);
+}
+
+// ── Metrics ──────────────────────────────────────────────────
+function updateMetrics(){
+  fetch('/api/metrics').then(r=>r.json()).then(d=>{
+    document.getElementById('m-tokens').textContent   = d.total_tokens_generated;
+    document.getElementById('m-deployed').textContent = d.active_deployments;
+    document.getElementById('m-alerts').textContent   = d.total_alerts;
+    document.getElementById('m-ips').textContent      = d.unique_ips;
+    const ae=document.getElementById('m-alerts');
+    ae.style.color=d.total_alerts>0?'var(--red)':'#e2e8f0';
+    document.getElementById('sb-time').textContent=new Date().toLocaleTimeString();
+  }).catch(()=>{});
+}
+setInterval(updateMetrics,10000); updateMetrics();
+
+// ── SSE ──────────────────────────────────────────────────────
+const es=new EventSource('/api/events/stream');
+es.onopen=()=>{
+  document.getElementById('sse-dot').style.color='var(--green)';
+  document.getElementById('sse-txt').textContent='SSE Connected';
+  document.getElementById('sse-live').textContent='● LIVE';
+  document.getElementById('sse-live').style.color='var(--green)';
+  document.getElementById('sb-sse').textContent='SSE: Connected';
+};
+es.onerror=()=>{
+  document.getElementById('sse-dot').style.color='var(--red)';
+  document.getElementById('sse-txt').textContent='SSE Disconnected';
+  document.getElementById('sse-live').textContent='● OFFLINE';
+  document.getElementById('sse-live').style.color='var(--red)';
+  document.getElementById('sb-sse').textContent='SSE: Disconnected';
+};
+es.onmessage=(e)=>{
+  try{
+    const d=JSON.parse(e.data);
+    if(d.type==='connected'||d.type==='heartbeat') return;
+
+    if(d.type==='honeytoken_triggered'){
+      showBreachPanel(d); incrementAlertBadge();
+      updatePipeStep('detect','red'); updateMetrics();
+      if(currentView==='monitor'){ refreshMonitor(); prependFeed(d); }
+      if(currentView==='alerts'){ loadAlerts(); loadAttrib(); }
+      if(currentView==='map') loadMap();
+      sendBrowserNotif(d);
+    }
+    if(d.type==='prevention_recommended'){
+      showToast(`3 prevention actions recommended for ${d.ip}`,'warning');
+      const pb=document.getElementById('prev-badge');
+      pb.style.display='inline-flex'; pb.textContent='!';
+      if(currentView==='prevention') loadRecs();
+    }
+    if(d.type==='prevention_action'||d.type==='prevention_executed'){
+      const msg=d.message||`Prevention: ${d.action||'action executed'}`;
+      showToast(msg,'success');
+      if(currentView==='prevention'){ loadBlockedIPs(); loadPrevLog(); }
+    }
+  }catch(_){}
+};
+
+// ── Breach panel ─────────────────────────────────────────────
+function showBreachPanel(d){
+  const geo=d.geo||{};
+  const loc=geo.private?'Private Network':(geo.city&&geo.country?`${geo.city}, ${geo.country}`:geo.country||'Unknown');
+  document.getElementById('bp-time').textContent     = fmtTime(d.timestamp);
+  document.getElementById('bp-ip').textContent       = d.attacker_ip;
+  document.getElementById('bp-geo').textContent      = loc;
+  document.getElementById('bp-endpoint').textContent = d.endpoint;
+  document.getElementById('bp-stage').textContent    = (d.attack_stage||'').replace(/_/g,' ').toUpperCase();
+  document.getElementById('bp-score').textContent    = d.anomaly_score;
+  document.getElementById('bp-severity').textContent = d.severity;
+  document.getElementById('bp-token').textContent    = d.token_masked;
+  document.getElementById('bp-agent').textContent    = d.user_agent||'—';
+  document.getElementById('breach-panel').style.right='0px';
+  setTimeout(closeBreachPanel,15000);
+}
+function closeBreachPanel(){ document.getElementById('breach-panel').style.right='-420px'; }
+
+function incrementAlertBadge(){
+  alertBadge++;
+  const b=document.getElementById('alert-badge');
+  b.textContent=alertBadge; b.style.display='inline-flex';
+}
+function updatePipeStep(step,state){
+  const el=document.getElementById('pipe-'+step);
+  if(el) el.className='pipe-dot '+state;
+}
+function sendBrowserNotif(d){
+  if(Notification.permission==='granted')
+    new Notification('HoneyGuard: Breach Detected',{
+      body:`IP ${d.attacker_ip} hit ${d.endpoint} (score: ${d.anomaly_score})`});
+}
+
+// ════════════════════════════════════════
+// FACTORY
+// ════════════════════════════════════════
+async function generateTokens(){
+  const tt=document.getElementById('tokenType').value;
+  const mt=document.getElementById('method').value;
+  const qty=Math.min(Math.max(parseInt(document.getElementById('quantity').value)||1,1),500);
+  document.getElementById('genBtn').disabled=true;
+  document.getElementById('gen-loading').style.display='block';
+  document.getElementById('result').innerHTML='';
+  document.getElementById('whats-next').style.display='none';
+  try{
+    const res=await fetch('/api/generate-token',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token_type:tt,method:mt,quantity:qty})});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    lastTokens=data.tokens||[];
+    displayResults(data); updatePipeStep('gen','green'); updateMetrics();
+    if(lastTokens.length>0) showWhatsNext(lastTokens[0]);
+  }catch(err){
+    document.getElementById('result').innerHTML=
+      `<div style="background:#1a0000;border:1px solid var(--red);border-radius:8px;padding:14px;color:#f87171">
+        <strong>Error:</strong> ${err.message}
+      </div>`;
+  }finally{
+    document.getElementById('genBtn').disabled=false;
+    document.getElementById('gen-loading').style.display='none';
+  }
+}
+
+function displayResults(data){
+  const tokens=data.tokens||[];
+  if(!tokens.length) return;
+  const avgE=(tokens.reduce((s,t)=>s+(t.entropy||0),0)/tokens.length).toFixed(3);
+  const avgA=(tokens.reduce((s,t)=>s+(t.authenticity_score||0),0)/tokens.length).toFixed(3);
+
+  // Show only first 5 in UI to avoid browser freeze on large batches
+  const show=tokens.slice(0,5);
+  let html=`<div style="background:#0d2e17;border:1px solid var(--green);border-radius:10px;padding:14px;margin-bottom:14px;color:#86efac;font-size:13px">
+    ✅ Generated <strong>${tokens.length}</strong> token(s) &nbsp;|&nbsp;
+    Avg Entropy: <strong>${avgE}</strong> &nbsp;|&nbsp; Avg Auth: <strong>${(avgA*100).toFixed(1)}%</strong>
+    ${tokens.length>5?`&nbsp;|&nbsp; <span style="color:var(--muted)">Showing first 5 of ${tokens.length}</span>`:''}
+  </div>`;
+  show.forEach((tok,i)=>{
+    const auth=tok.authenticity_score||0;
+    const ent=tok.entropy||0;
+    const ac=auth>=.90?'var(--green)':auth>=.80?'var(--yellow)':'var(--red)';
+    const ec=ent>=4.5?'var(--green)':ent>=3.5?'var(--yellow)':'var(--red)';
+    const tv=typeof tok.token_value==='string'?tok.token_value:JSON.stringify(tok.token_value,null,2);
+    html+=`<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:700;color:var(--accent)">Token #${i+1}</span>
+        <div style="display:flex;gap:6px">
+          <span style="background:var(--border);color:#a5f3fc;padding:2px 8px;border-radius:10px;font-size:11px">${tok.token_type||data.token_usage}</span>
+          <span style="background:var(--border);color:#94a3b8;padding:2px 8px;border-radius:10px;font-size:11px">${tok.method||'hybrid'}</span>
+        </div>
+      </div>
+      <div class="token-box" style="margin-bottom:10px;font-size:11px;max-height:80px;overflow-y:auto">${esc(tv)}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <div style="text-align:center;background:var(--border);padding:7px;border-radius:6px">
+          <div style="font-size:9px;color:var(--muted)">Entropy</div><div style="font-weight:700;color:${ec}">${ent.toFixed(3)}</div></div>
+        <div style="text-align:center;background:var(--border);padding:7px;border-radius:6px">
+          <div style="font-size:9px;color:var(--muted)">Auth</div><div style="font-weight:700;color:${ac}">${(auth*100).toFixed(1)}%</div></div>
+        <div style="text-align:center;background:var(--border);padding:7px;border-radius:6px">
+          <div style="font-size:9px;color:var(--muted)">Disc</div><div style="font-weight:700;color:${ac}">${((tok.disc_score||0)*100).toFixed(1)}%</div></div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('result').innerHTML=html;
+}
+
+function showWhatsNext(tok){
+  const tv=tok.token_value||'';
+  _deployedTV=tv;
+  document.getElementById('wn-info').textContent=
+    `${tok.token_type.toUpperCase()} · Auth: ${((tok.authenticity_score||0)*100).toFixed(1)}% · Entropy: ${(tok.entropy||0).toFixed(3)}`;
+  document.getElementById('wn-val').textContent=tv.length>60?tv.slice(0,60)+'…':tv;
+  document.getElementById('whats-next').style.display='block';
+  document.getElementById('pm-hint').textContent=`Authorization: Bearer ${tv.slice(0,24)}…`;
+}
+function copyToken(){ if(_deployedTV){ navigator.clipboard.writeText(_deployedTV); showToast('Token copied!','success'); } }
+function copyPostman(){ if(_deployedTV){ navigator.clipboard.writeText(`Authorization: Bearer ${_deployedTV}`); showToast('Postman header copied!','success'); } }
+
+async function deployThisToken(){
+  const btn=event.target; btn.disabled=true; btn.textContent='⏳ Deploying…';
+  try{
+    const res=await fetch('/api/deploy-token',{method:'POST'});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    updatePipeStep('deploy','green'); updatePipeStep('monitor','green'); updateMetrics();
+    showToast('Token deployed! Now use it in Postman.','success');
+    showView('deploy');
+  }catch(e){ showToast('Deploy failed: '+e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent='→ Deploy This Token'; }
+}
+
+// ════════════════════════════════════════
+// DEPLOY
+// ════════════════════════════════════════
+async function loadRLRec(){
+  try{
+    const res=await fetch('/api/rl/recommend',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({threat_level:'MEDIUM'})});
+    const r=await res.json();
+    document.getElementById('rec-area').textContent     = r.deployment_area||'—';
+    document.getElementById('rec-type').textContent     = r.token_type||'—';
+    document.getElementById('rec-priority').textContent = r.priority_level||'—';
+    document.getElementById('rec-confidence').textContent = ((r.confidence||0)*100).toFixed(0)+'%';
+  }catch(_){}
+}
+
+async function deployToken(){
+  const btn=document.getElementById('deployBtn');
+  btn.disabled=true; btn.textContent='⏳ Deploying…';
+  try{
+    const res=await fetch('/api/deploy-token',{method:'POST'});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    _deployedTV=d.token_value||'';
+    updatePipeStep('deploy','green'); updatePipeStep('monitor','green'); updateMetrics();
+    loadDeployments();
+    document.getElementById('pm-hint').textContent=`Authorization: Bearer ${d.token_value.slice(0,24)}…`;
+    document.getElementById('deploy-result').style.display='block';
+    document.getElementById('deploy-result').innerHTML=`
+      <div style="background:#0d2e17;border:1px solid var(--green);border-radius:8px;padding:12px">
+        <div style="color:var(--green);font-weight:700;margin-bottom:6px">✓ Deployed!</div>
+        <div class="token-box" style="font-size:11px;margin-bottom:6px">${esc(d.token_value)}</div>
+        <div style="font-size:11px;color:var(--muted)">Trap URL: <span style="color:#a5f3fc">http://192.168.1.9:5000/api/data</span></div>
+      </div>`;
+    showToast('Token deployed. Use in Postman to trigger detection.','success');
+  }catch(e){
+    document.getElementById('deploy-result').style.display='block';
+    document.getElementById('deploy-result').innerHTML=
+      `<div style="background:#1a0000;border:1px solid var(--red);border-radius:8px;padding:12px;color:#f87171">Error: ${e.message}</div>`;
+  }finally{ btn.disabled=false; btn.textContent='⚡ Deploy Token Now'; }
+}
+
+async function loadDeployments(){
+  const res=await fetch('/api/active-tokens').catch(()=>null);
+  if(!res) return;
+  const deps=await res.json();
+  const el=document.getElementById('active-deployments');
+  if(!deps.length){ el.innerHTML='<p style="color:#475569;font-size:12px">No active deployments</p>'; return; }
+  el.innerHTML=deps.map(d=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--dark);border-radius:8px;margin-bottom:5px;font-size:12px">
+      <div><span style="color:#e2e8f0;font-weight:600">${d.token_type}</span>
+        <span style="color:var(--muted);margin:0 5px">·</span>
+        <span style="font-family:monospace;color:#a5f3fc">${d.token_masked}</span></div>
+      <span style="background:#052e16;color:var(--green);padding:2px 8px;border-radius:10px;font-size:10px;border:1px solid var(--green)">● LIVE</span>
+    </div>`).join('');
+}
+function copyPM(){ if(_deployedTV){ navigator.clipboard.writeText(`GET http://192.168.1.9:5000/api/data\nAuthorization: Bearer ${_deployedTV}`); showToast('Copied!','success'); } }
+
+// ════════════════════════════════════════
+// MONITOR
+// ════════════════════════════════════════
+async function refreshMonitor(){
+  refreshDetectionStatus();
+  const res=await fetch('/api/alerts').catch(()=>null);
+  if(!res) return;
+  const alerts=await res.json();
+  renderFeed(alerts);
+  renderAnomalyChart(alerts);
+  renderIPChart(alerts);
+  renderStageFlow(alerts);
+}
+
+function renderFeed(alerts){
+  const feed=document.getElementById('monitor-feed');
+  if(!alerts.length){ feed.innerHTML='<p style="color:#475569;font-size:12px">No events yet — waiting…</p>'; return; }
+  feed.innerHTML=alerts.slice(0,10).map(a=>{
+    const method=a.method||'—';
+    const endpoint=a.endpoint||a.location||'—';
+    const score=a.anomaly_score!=null?a.anomaly_score:'—';
+    const stage=a.attack_stage||a.severity||'—';
+    const bc=a.endpoint?'var(--red)':'var(--border)';
+    return `<div style="background:var(--panel);border:1px solid ${bc};border-radius:8px;padding:9px;font-size:11px">
+      <div style="color:var(--muted);margin-bottom:2px">${fmtTime(a.timestamp)}</div>
+      <div style="color:#e2e8f0;font-weight:600">${method} ${endpoint}</div>
+      <div style="color:var(--muted)">IP: <span style="color:#fca5a5">${a.attacker_ip}</span>
+        ${score!=='—'?` · Score: <span style="color:var(--orange)">${score}</span>`:''}
+      </div>
+      <div style="margin-top:4px"><span class="stage-badge stage-${(stage||'').replace(/ /g,'_')}">${String(stage).replace(/_/g,' ')}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function prependFeed(d){
+  const feed=document.getElementById('monitor-feed');
+  const item=document.createElement('div');
+  item.className='slide-in';
+  item.style.cssText='background:#2d0000;border:1px solid var(--red);border-radius:8px;padding:9px;font-size:11px;margin-bottom:6px';
+  item.innerHTML=`<div style="color:#f87171;margin-bottom:2px">${fmtTime(d.timestamp)} · NEW</div>
+    <div style="color:#fca5a5;font-weight:600">${d.method} ${d.endpoint}</div>
+    <div style="color:#f87171">IP: ${d.attacker_ip} · Score: ${d.anomaly_score}</div>`;
+  feed.insertBefore(item, feed.firstChild);
+}
+
+function renderAnomalyChart(alerts){
+  const scored=alerts.filter(a=>a.anomaly_score!=null).reverse().slice(-20);
+  if(!scored.length) return;
+  const labels=scored.map(a=>fmtTime(a.timestamp));
+  const data=scored.map(a=>a.anomaly_score);
+  const ptColors=data.map(v=>v>.85?'#ef4444':v>.6?'#f97316':v>.3?'#eab308':'#22c55e');
+  const ctx=document.getElementById('anomaly-chart');
+  if(!ctx) return;
+  if(_anomalyChart){ _anomalyChart.destroy(); _anomalyChart=null; }
+  _anomalyChart=new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets:[{label:'Anomaly',data,borderColor:'#6366f1',
+      backgroundColor:'rgba(99,102,241,.1)',pointBackgroundColor:ptColors,
+      pointRadius:5,tension:.3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#475569',maxTicksLimit:6,font:{size:9}},grid:{color:'#1e293b'}},
+              y:{min:0,max:1,ticks:{color:'#475569',font:{size:9}},grid:{color:'#1e293b'}}}}
+  });
+}
+
+function renderIPChart(alerts){
+  const scored=alerts.filter(a=>a.anomaly_score!=null&&a.attacker_ip);
+  if(!scored.length) return;
+  const counts={};
+  scored.forEach(a=>{ counts[a.attacker_ip]=(counts[a.attacker_ip]||0)+1; });
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const labels=sorted.map(([ip])=>ip);
+  const data=sorted.map(([,c])=>c);
+  const barColors=sorted.map(([ip])=>{
+    const al=scored.filter(a=>a.attacker_ip===ip);
+    const maxS=Math.max(...al.map(a=>a.anomaly_score||0));
+    return maxS>.85?'#ef4444':maxS>.6?'#f97316':maxS>.3?'#eab308':'#22c55e';
+  });
+  const ctx=document.getElementById('ip-chart');
+  if(!ctx) return;
+  if(_ipChart){ _ipChart.destroy(); _ipChart=null; }
+  _ipChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels, datasets:[{label:'Attacks',data,backgroundColor:barColors,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#475569',font:{size:9}},grid:{display:false}},
+              y:{ticks:{color:'#475569',font:{size:9},stepSize:1},grid:{color:'#1e293b'},
+                 min:0,beginAtZero:true}}}
+  });
+}
+
+const _STAGE_META={
+  'reconnaissance':{label:'Recon',col:'#8b5cf6'},
+  'lateral_movement':{label:'Lateral',col:'#06b6d4'},
+  'privilege_escalation':{label:'PrivEsc',col:'#f97316'},
+  'exfiltration':{label:'Exfil',col:'#ef4444'},
+};
+function renderStageFlow(alerts){
+  const el=document.getElementById('stage-flow'); if(!el) return;
+  const stages=[...new Set(alerts.filter(a=>a.attack_stage).map(a=>a.attack_stage))];
+  const ordered=['reconnaissance','lateral_movement','privilege_escalation','exfiltration'].filter(s=>stages.includes(s));
+  if(!ordered.length) return;
+  el.innerHTML=ordered.map((s,i)=>{
+    const m=_STAGE_META[s]||{label:s,col:'var(--accent)'};
+    return `${i>0?'<span style="color:#334155;font-size:12px">→</span>':''}
+      <span style="background:${m.col}22;color:${m.col};border:1px solid ${m.col};
+                   padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">${m.label}</span>`;
+  }).join('');
+}
+
+async function refreshDetectionStatus(){
+  try{
+    const res=await fetch('/api/detection-status');
+    const d=await res.json();
+    const score=d.anomaly_score||0;
+    document.getElementById('anomaly-score').textContent = score.toFixed(3);
+    document.getElementById('risk-level').textContent    = d.risk_level||'LOW';
+    document.getElementById('attack-stage').textContent  = (d.dominant_stage||'benign').replace(/_/g,' ');
+    document.getElementById('mitre').textContent         = d.mitre_mapping||'—';
+    const bar=document.getElementById('score-bar');
+    bar.style.width=(score*100).toFixed(1)+'%';
+    bar.style.background=score>.85?'#ef4444':score>.6?'#f97316':score>.3?'#eab308':'#22c55e';
+    document.getElementById('risk-level').style.color=score>.85?'#f87171':score>.6?'#fdba74':score>.3?'#fde68a':'#86efac';
+    document.getElementById('ag-risk').textContent    = d.risk_level||'—';
+    document.getElementById('ag-anomaly').textContent = score.toFixed(4);
+    document.getElementById('ag-stage').textContent   = (d.dominant_stage||'—').replace(/_/g,' ');
+    document.getElementById('ag-events').textContent  = d.events_processed||'—';
+    document.getElementById('ag-mitre').textContent   = d.mitre_mapping||'—';
+    document.getElementById('ag-ip').textContent      = d.attacker_ip||'—';
+  }catch(_){}
+}
+
+// ════════════════════════════════════════
+// ALERTS
+// ════════════════════════════════════════
+async function loadAlerts(){
+  try{
+    const [mRes,aRes]=await Promise.all([fetch('/api/metrics'),fetch('/api/alerts')]);
+    const m=await mRes.json(); const alerts=await aRes.json();
+    document.getElementById('a-total').textContent    = m.total_alerts;
+    document.getElementById('a-ips').textContent      = m.unique_ips;
+    document.getElementById('a-critical').textContent = alerts.filter(a=>a.severity==='CRITICAL').length;
+    document.getElementById('a-high').textContent     = alerts.filter(a=>a.severity==='HIGH').length;
+    const c=document.getElementById('alerts-list');
+    if(!alerts.length){ c.innerHTML='<p style="color:#475569;font-size:12px">No alerts yet.</p>'; return; }
+    c.innerHTML=alerts.map(a=>makeAlertCard(a)).join('');
+  }catch(_){}
+}
+
+function makeAlertCard(a){
+  const sev=a.severity||'HIGH';
+  const method=a.method||'—'; const ep=a.endpoint||a.location||'—';
+  return `<div class="slide-in" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span class="sev-${sev}" style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700">${sev}</span>
+      <span style="color:#475569;font-size:11px">${fmtAgo(a.timestamp)}</span>
+    </div>
+    <div style="font-weight:600;color:#e2e8f0;margin-bottom:5px;font-size:13px">${method} ${ep}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;color:var(--muted);margin-bottom:7px">
+      <span>IP: <span style="color:#fca5a5">${a.attacker_ip}</span></span>
+      <span>Score: <span style="color:var(--orange)">${a.anomaly_score!=null?a.anomaly_score:'—'}</span></span>
+      <span>Token: <span style="font-family:monospace;color:#a5f3fc">${a.token_value||'—'}</span></span>
+      <span>Stage: <span style="color:#818cf8">${(a.attack_stage||'').replace(/_/g,' ')}</span></span>
+    </div>
+    <div style="font-size:10px;color:#475569">${a.user_agent||'—'}</div>
+    <div style="margin-top:8px;text-align:right">
+      <button onclick="downloadReport()" class="btn-g" style="font-size:11px">📄 Report →</button>
+    </div>
+  </div>`;
+}
+
+async function loadAttrib(){
+  try{
+    const res=await fetch('/api/attribution'); const d=await res.json();
+    document.getElementById('attr-actor').textContent=(d.primary_actor||'—').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    document.getElementById('attr-conf').textContent=((d.confidence||0)*100).toFixed(1)+'% confidence';
+    const dist=d.attribution_distribution||{};
+    document.getElementById('attr-dist').innerHTML=Object.entries(dist).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div><div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-bottom:2px">
+        <span>${k.replace(/_/g,' ')}</span><span>${(v*100).toFixed(1)}%</span></div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;background:var(--accent);border-radius:2px;width:${(v*100).toFixed(1)}%;transition:width .5s"></div>
+        </div></div>`).join('');
+    document.getElementById('attr-stages').innerHTML=(d.attack_stages||[]).map(s=>
+      `<span style="background:var(--border);color:#a5f3fc;padding:2px 8px;border-radius:10px;font-size:10px">${s.replace(/_/g,' ')}</span>`).join('');
+  }catch(_){}
+}
+
+// ════════════════════════════════════════
+// ATTACK MAP
+// ════════════════════════════════════════
+const _SEV_COLOR={CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#22c55e'};
+
+function initMap(){
+  if(_leafletMap) return;
+  _leafletMap=L.map('attack-map',{zoomControl:true,attributionControl:false}).setView([20,0],2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    maxZoom:18, subdomains:'abcd'
+  }).addTo(_leafletMap);
+}
+
+async function loadMap(){
+  if(!_leafletMap) initMap();
+  try{
+    const res=await fetch('/api/attack-map'); const d=await res.json();
+    document.getElementById('map-total').textContent    = d.total_attacks||0;
+    document.getElementById('map-countries').textContent= d.unique_countries||0;
+    document.getElementById('map-critical').textContent = d.critical_count||0;
+    document.getElementById('map-blocked').textContent  = d.blocked_today||0;
+
+    // Clear existing markers
+    _mapMarkers.forEach(m=>_leafletMap.removeLayer(m));
+    _mapMarkers=[];
+
+    const markers=d.markers||[];
+
+    const realMarkers = markers.filter(m => {
+      const g = m.geo||{};
+      return g.lat != null && g.lon != null && !g.private;
+    });
+    document.getElementById('map-empty').style.display = realMarkers.length ? 'none' : 'block';
+    if(!realMarkers.length){
+      document.getElementById('map-empty').querySelector('div:nth-child(2)').textContent =
+        'All current attacks are from local/private IPs — no public geolocation available.';
+    }
+    realMarkers.forEach((m,idx)=>{
+      const geo=m.geo||{};
+      let mlat = geo.lat;
+      let mlon = geo.lon;
+      const isBlocked=false; // could check db, simplified here
+      const col=_SEV_COLOR[m.severity]||'#22c55e';
+      const sz=Math.min(8+m.count*4,40);
+      const isLatest=idx===0;
+
+      const circle=L.circleMarker([mlat,mlon],{
+        radius:sz/2,
+        fillColor:col, color:'#fff',
+        weight:2, opacity:1, fillOpacity:.85,
+      }).addTo(_leafletMap);
+
+      const loc=geo.private?'Private Network':(geo.city&&geo.country?`${geo.city}, ${geo.country}`:geo.country||'Unknown');
+      const stages=(m.stages||[]).map(s=>`<span style="background:${_SEV_COLOR[m.severity]||'#94a3b8'}22;color:${_SEV_COLOR[m.severity]||'#94a3b8'};border:1px solid ${_SEV_COLOR[m.severity]||'#94a3b8'};padding:1px 6px;border-radius:6px;font-size:10px">${s.replace(/_/g,' ')}</span>`).join(' ');
+      const popupHtml=`<div style="padding:14px;min-width:220px;font-family:'Segoe UI',sans-serif">
+        <div style="background:${col};color:#fff;font-weight:700;font-size:13px;padding:8px 12px;margin:-14px -14px 12px;border-radius:8px 8px 0 0">${m.severity} THREAT</div>
+        <div style="font-size:12px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between"><span style="color:#64748b">IP</span><span style="color:#e2e8f0;font-family:monospace;font-weight:600">${m.ip}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Location</span><span style="color:#e2e8f0">${loc}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#64748b">ISP</span><span style="color:#94a3b8;max-width:130px;text-align:right">${geo.isp||'—'}</span></div>
+          <hr style="border-color:#1e293b;margin:2px 0">
+          <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Attacks</span><span style="color:#e2e8f0;font-weight:700">${m.count} total</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Last Seen</span><span style="color:#e2e8f0">${fmtAgo(m.last_seen)}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Endpoints</span><span style="color:#94a3b8;max-width:130px;text-align:right;font-size:10px">${(m.endpoints||[]).join(', ')}</span></div>
+          ${stages?`<div style="margin-top:2px">${stages}</div>`:''}
+          <hr style="border-color:#1e293b;margin:2px 0">
+          <div style="display:flex;gap:6px;margin-top:2px">
+            <button onclick="blockFromMap('${m.ip}')" style="flex:1;background:#ef444422;color:#ef4444;border:1px solid #ef4444;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11px">🚫 Block</button>
+            <button onclick="navigator.clipboard.writeText('${m.ip}');showToast('IP copied','success')" style="flex:1;background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11px">📋 Copy</button>
+          </div>
+        </div>
+      </div>`;
+      circle.bindPopup(popupHtml,{maxWidth:260});
+      _mapMarkers.push(circle);
+    });
+
+    // Top countries
+    const cc=d.country_counts||{};
+    const sorted=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const maxC=sorted[0]?.[1]||1;
+    document.getElementById('top-countries').innerHTML=sorted.length
+      ?sorted.map(([country,cnt])=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="color:#e2e8f0;min-width:120px">${country}</span>
+          <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;background:var(--red);border-radius:3px;width:${(cnt/maxC*100).toFixed(0)}%;transition:width .5s"></div>
+          </div>
+          <span style="color:#94a3b8;min-width:24px;text-align:right">${cnt}</span>
+        </div>`).join('')
+      :'<div style="color:#475569;font-size:12px">No data yet</div>';
+
+    // Timeline
+    const allAlerts=markers.flatMap(m=>(m.last_seen?[{ip:m.ip,time:m.last_seen,sev:m.severity,count:m.count}]:[])).sort((a,b)=>b.time>a.time?1:-1).slice(0,10);
+    document.getElementById('attack-timeline').innerHTML=allAlerts.length
+      ?allAlerts.map(a=>`
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">
+          <span style="color:${_SEV_COLOR[a.sev]||'#94a3b8'};font-size:8px">●</span>
+          <span style="color:var(--muted);width:56px;flex-shrink:0">${fmtTime(a.time)}</span>
+          <span style="font-family:monospace;color:#a5f3fc;flex:1">${a.ip}</span>
+          <span style="color:var(--muted)">${a.count}x</span>
+        </div>`).join('')
+      :'<div style="color:#475569;font-size:12px">No attacks yet</div>';
+
+  }catch(e){ console.error('Map load error:',e); }
+}
+
+async function blockFromMap(ip){
+  try{
+    await fetch('/api/prevention/unblock',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:'__NOOP__'})});
+    const res=await fetch('/api/prevention/settings',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({mode:'alert_recommend'})});
+    // Actually block it directly
+    await fetch('/api/prevention/approve',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rec_id:'manual',action:'block_ip',target:ip})});
+    showToast(`IP ${ip} blocked from map`,'success');
+    loadMap();
+  }catch(e){ showToast('Block failed: '+e.message,'error'); }
+}
+
+// ════════════════════════════════════════
+// PREVENTION
+// ════════════════════════════════════════
+async function loadPrevSettings(){
+  try{
+    const res=await fetch('/api/prevention/settings');
+    const s=await res.json();
+    _currentMode=s.mode||'monitor';
+    applyModeUI(_currentMode);
+    if(s.auto_block!==undefined){
+      document.getElementById('t-block').checked  = !!s.auto_block;
+      document.getElementById('t-rotate').checked = !!s.auto_rotate_tokens;
+      document.getElementById('t-quar').checked   = !!s.auto_quarantine;
+      document.getElementById('t-report').checked = !!s.auto_report;
+      document.getElementById('t-dur').value = s.block_duration_minutes||60;
+    }
+  }catch(_){}
+}
+
+const _MODE_COLORS={monitor:'var(--green)',alert_recommend:'var(--orange)',auto_prevent:'var(--red)'};
+function applyModeUI(mode){
+  ['monitor','alert_recommend','auto_prevent'].forEach(m=>{
+    const c=document.getElementById('mc-'+m);
+    const b=document.getElementById('mc-'+m+'-badge');
+    c.style.border='1px solid var(--border)';
+    if(b) b.textContent='Click to activate';
+  });
+  const ac=document.getElementById('mc-'+mode);
+  if(ac) ac.style.border=`2px solid ${_MODE_COLORS[mode]}`;
+  const ab=document.getElementById('mc-'+mode+'-badge');
+  if(ab){
+    const labels={monitor:'✓ ACTIVE',alert_recommend:'✓ ACTIVE',auto_prevent:'✓ ACTIVE'};
+    ab.textContent=labels[mode]||'✓ ACTIVE';
+  }
+  document.getElementById('recs-panel').style.display  = mode==='alert_recommend'?'block':'none';
+  document.getElementById('auto-panel').style.display  = mode==='auto_prevent'?'block':'none';
+  document.getElementById('mode-dot').style.color =
+    mode==='auto_prevent'?'var(--red)':mode==='alert_recommend'?'var(--orange)':'var(--green)';
+  document.getElementById('mode-txt').textContent =
+    {monitor:'Monitor Mode',alert_recommend:'Recommend Mode',auto_prevent:'Auto-Prevent'}[mode]||mode;
+}
+
+async function setMode(mode){
+  if(mode==='auto_prevent'){
+    if(!confirm('Enable Auto-Prevent mode?\n\nThis will automatically block attacker IPs, rotate tokens, and quarantine sessions without approval.\n\nOnly use this in a controlled environment.'))
+      return;
+  }
+  try{
+    await fetch('/api/prevention/settings',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({mode})});
+    _currentMode=mode;
+    applyModeUI(mode);
+    const labels={monitor:'Monitor Only',alert_recommend:'Alert + Recommend',auto_prevent:'Auto Prevent'};
+    showToast(`Mode: ${labels[mode]||mode}`,mode==='auto_prevent'?'warning':'success');
+    if(mode==='alert_recommend') loadRecs();
+  }catch(e){ showToast('Failed: '+e.message,'error'); }
+}
+
+async function saveSettings(){
+  try{
+    await fetch('/api/prevention/settings',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        auto_block:            document.getElementById('t-block').checked,
+        auto_rotate_tokens:    document.getElementById('t-rotate').checked,
+        auto_quarantine:       document.getElementById('t-quar').checked,
+        auto_report:           document.getElementById('t-report').checked,
+        block_duration_minutes:parseInt(document.getElementById('t-dur').value),
+      })});
+    showToast('Settings saved','success');
+  }catch(_){}
+}
+
+async function loadRecs(){
+  try{
+    const res=await fetch('/api/prevention/recommendations');
+    const recs=await res.json();
+    document.getElementById('rec-count').textContent=recs.length;
+    const el=document.getElementById('recs-list');
+    if(!recs.length){ el.innerHTML='<div style="color:#475569;font-size:12px">No pending recommendations</div>'; return; }
+    el.innerHTML=recs.map(r=>`
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${new Date(r.timestamp).toLocaleString()} — IP: ${r.attacker_ip}</div>
+        ${(r.recommendations||[]).map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--border);border-radius:6px;margin-bottom:6px">
+            <div>
+              <div style="font-size:12px;font-weight:600">${a.label}</div>
+              <div style="font-size:10px;color:var(--muted)">Risk: ${a.risk} | Reversible: ${a.reversible?'Yes':'No'}</div>
+            </div>
+            <div style="display:flex;gap:5px">
+              <button onclick="approveRec('${r._id}','${a.action}','${a.target}')" class="btn-green-sm">✓ Approve</button>
+              <button onclick="rejectRec('${r._id}')" class="btn-g" style="font-size:11px">✕ Reject</button>
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+  }catch(_){}
+}
+
+async function approveRec(recId,action,target){
+  try{
+    await fetch('/api/prevention/approve',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rec_id:recId,action,target})});
+    showToast(`Approved: ${action} on ${target}`,'success');
+    loadRecs(); loadBlockedIPs(); loadPrevLog();
+  }catch(e){ showToast('Failed: '+e.message,'error'); }
+}
+async function rejectRec(recId){
+  try{
+    await fetch('/api/prevention/reject',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({rec_id:recId})});
+    showToast('Action rejected','info'); loadRecs();
+  }catch(_){}
+}
+
+async function loadBlockedIPs(){
+  try{
+    const res=await fetch('/api/prevention/blocked-ips');
+    const ips=await res.json();
+    document.getElementById('blocked-count').textContent=`${ips.length} active`;
+    const el=document.getElementById('blocked-list');
+    if(!ips.length){ el.innerHTML='<div style="color:#475569;font-size:12px">No IPs blocked</div>'; return; }
+    el.innerHTML=ips.map(ip=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--border);border-radius:6px;margin-bottom:5px;font-size:12px">
+        <div>
+          <span style="color:var(--red);font-family:monospace">${ip.ip}</span>
+          <div style="color:var(--muted);font-size:10px;margin-top:2px">Expires: ${fmtTime(ip.expires_at)}</div>
+        </div>
+        <button onclick="unblockIP('${ip.ip}')" class="btn-g" style="font-size:11px">Unblock</button>
+      </div>`).join('');
+  }catch(_){}
+}
+async function unblockIP(ip){
+  try{
+    await fetch('/api/prevention/unblock',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({ip})});
+    showToast(`IP ${ip} unblocked`,'success');
+    loadBlockedIPs(); loadPrevLog();
+  }catch(_){}
+}
+async function loadPrevLog(){
+  try{
+    const res=await fetch('/api/prevention/log');
+    const logs=await res.json();
+    const icons={block_ip:'🚫',rotate_token:'🔄',quarantine:'🔬',auto_report:'📄',unblock:'✅'};
+    const el=document.getElementById('prev-log');
+    if(!logs.length){ el.innerHTML='<div style="color:#475569;font-size:12px">No actions yet</div>'; return; }
+    el.innerHTML=logs.map(l=>`
+      <div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <span>${icons[l.action]||'⚡'}</span>
+        <div><span style="color:#e2e8f0">${l.action}</span>
+          <span style="color:var(--muted)"> → ${l.target}</span>
+          <div style="color:#475569;font-size:10px">${fmtTime(l.timestamp)}</div>
+        </div>
+      </div>`).join('');
+  }catch(_){}
+}
+
+// ════════════════════════════════════════
+// REPORTS
+// ════════════════════════════════════════
+async function loadReportChecks(){
+  try{
+    const [mRes,aRes]=await Promise.all([fetch('/api/metrics'),fetch('/api/alerts')]);
+    const m=await mRes.json(); const a=await aRes.json();
+    document.getElementById('report-checks').innerHTML=`
+      <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span>✅ Token data</span><span style="color:var(--muted)">${m.total_tokens_generated} tokens</span></div>
+        <div style="display:flex;justify-content:space-between"><span>✅ Detection data</span><span style="color:var(--muted)">${m.total_alerts} events</span></div>
+        <div style="display:flex;justify-content:space-between"><span>${m.unique_ips>0?'✅':'○'} Attribution</span><span style="color:var(--muted)">${m.unique_ips} attacker IPs</span></div>
+        <div style="display:flex;justify-content:space-between"><span>${a.length>0?'✅':'○'} Alert history</span><span style="color:var(--muted)">${a.length} alerts</span></div>
+      </div>`;
+  }catch(_){}
+}
+
+async function downloadReport(){
+  const btn=document.getElementById('report-btn');
+  if(!btn) return;
+  const orig=btn.textContent; btn.textContent='⏳ Generating PDF…'; btn.disabled=true;
+  document.getElementById('report-status').textContent='Building report from MongoDB data…';
+  try{
+    const res=await fetch('/api/generate-report',{method:'POST'});
+    if(!res.ok) throw new Error(await res.text());
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='honeyguard_report.pdf'; a.click();
+    URL.revokeObjectURL(url);
+    document.getElementById('report-status').textContent='✅ Report downloaded!';
+    showToast('Report downloaded!','success');
+    loadReportHistory();
+  }catch(e){
+    document.getElementById('report-status').textContent='❌ Error: '+e.message;
+    showToast('Report failed: '+e.message,'error');
+  }finally{ btn.textContent=orig; btn.disabled=false; }
+}
+async function loadReportHistory(){
+  try{
+    const res=await fetch('/api/reports'); const reports=await res.json();
+    const el=document.getElementById('report-history');
+    if(!reports.length){ el.innerHTML='<p style="color:#475569;font-size:12px">No reports yet</p>'; return; }
+    el.innerHTML=reports.map(r=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:#94a3b8;font-family:monospace">${r.incident_id}</span>
+        <span style="color:#475569">${fmtTime(r.timestamp)}</span>
+        <a href="/reports/${r.incident_id}.pdf" download style="color:var(--accent);text-decoration:none;font-size:11px">⬇ PDF</a>
+      </div>`).join('');
+  }catch(_){}
+}
+
+// ── Init ─────────────────────────────────────────────────────
+showView('factory');
+Notification.requestPermission();
+</script>
+</body>
+</html>

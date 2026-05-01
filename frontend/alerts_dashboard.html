@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Alert Feed — AI Honeytoken</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:   #667eea;
+      --purple2:  #764ba2;
+      --red:      #ef4444;
+      --orange:   #f59e0b;
+      --green:    #22c55e;
+      --dark-red: #991b1b;
+      --bg:       #f1f5f9;
+      --white:    #ffffff;
+      --text:     #1e293b;
+      --muted:    #64748b;
+      --border:   #e2e8f0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple2) 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--text);
+    }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    .nav-bar {
+      padding: 12px 20px;
+      background: #f8f9fa;
+      border-radius: 10px 10px 0 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+    .nav-bar strong { color: #555; }
+    .nav-bar a { color: var(--purple); text-decoration: none; }
+    .nav-bar a.active { font-weight: 700; border-bottom: 2px solid var(--purple); }
+    .nav-bar span.sep { color: #999; }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    .page { max-width: 1400px; margin: 0 auto; }
+
+    .card {
+      background: var(--white);
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,.12);
+      padding: 28px;
+    }
+    .card + .card { margin-top: 22px; }
+
+    /* ── Header ──────────────────────────────────────────── */
+    .page-header {
+      border-radius: 15px 15px 0 0;
+      background: var(--white);
+      padding: 28px 28px 20px;
+      box-shadow: 0 5px 20px rgba(0,0,0,.12);
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .page-header h1 { font-size: 2rem; color: var(--purple); }
+    .page-header p  { color: var(--muted); font-size: 0.95rem; margin-top: 4px; }
+
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: #f1f5f9;
+      color: var(--muted);
+      transition: all .3s;
+    }
+    .conn-badge.live   { background: #dcfce7; color: #166534; }
+    .conn-badge.error  { background: #fee2e2; color: #991b1b; }
+
+    .conn-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .conn-badge.live  .conn-dot { background: var(--green); animation: blink 1.4s ease-in-out infinite; }
+    .conn-badge.error .conn-dot { background: var(--red); }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Stats row ───────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    .stat-chip {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.08);
+      border-top: 4px solid var(--purple);
+    }
+    .stat-chip.crit { border-color: var(--dark-red); }
+    .stat-chip.high { border-color: var(--red); }
+    .stat-chip.med  { border-color: var(--orange); }
+    .stat-chip.low  { border-color: var(--green); }
+
+    .stat-chip .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+    .stat-chip .value { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1; }
+
+    /* ── Main grid ───────────────────────────────────────── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    /* ── Alert feed ──────────────────────────────────────── */
+    .feed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .feed-header h2 { font-size: 1.2rem; color: var(--text); }
+
+    .feed-controls { display: flex; gap: 10px; align-items: center; }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .25s;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--purple), var(--purple2)); color: #fff; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,.4); }
+    .btn-ghost   { background: #f1f5f9; color: var(--text); }
+    .btn-ghost:hover { background: #e2e8f0; }
+    .btn-danger  { background: #fee2e2; color: var(--red); }
+    .btn-danger:hover { background: #fecaca; }
+
+    .alert-feed {
+      max-height: 620px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+    .alert-feed::-webkit-scrollbar { width: 5px; }
+    .alert-feed::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    .alert-feed::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .alert-item {
+      border-radius: 10px;
+      padding: 14px 16px;
+      border-left: 5px solid var(--muted);
+      background: #f8fafc;
+      animation: slideIn .35s ease-out;
+      position: relative;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .alert-item.CRITICAL { border-left-color: var(--dark-red); background: #fff1f2; animation: slideIn .35s ease-out, criticalPulse 2s ease-in-out 3; }
+    .alert-item.HIGH     { border-left-color: var(--red);      background: #fff5f5; }
+    .alert-item.MEDIUM   { border-left-color: var(--orange);   background: #fffbeb; }
+    .alert-item.LOW      { border-left-color: var(--green);    background: #f0fdf4; }
+
+    @keyframes criticalPulse {
+      0%,100% { box-shadow: none; }
+      50%     { box-shadow: 0 0 0 3px rgba(153,27,27,.25); }
+    }
+
+    .alert-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+
+    .sev-badge {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: .06em;
+      padding: 2px 8px; border-radius: 10px; flex-shrink: 0;
+    }
+    .sev-badge.CRITICAL { background: var(--dark-red); color: #fff; }
+    .sev-badge.HIGH     { background: var(--red);      color: #fff; }
+    .sev-badge.MEDIUM   { background: var(--orange);   color: #fff; }
+    .sev-badge.LOW      { background: var(--green);    color: #fff; }
+
+    .alert-time { font-size: 0.75rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
+
+    .alert-message { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+
+    .alert-meta { display: flex; gap: 14px; flex-wrap: wrap; }
+    .alert-meta span { font-size: 0.78rem; color: var(--muted); }
+    .alert-meta span strong { color: var(--text); }
+
+    .empty-feed {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-feed .icon { font-size: 3rem; margin-bottom: 12px; opacity: .5; }
+    .empty-feed p { font-size: 0.9rem; }
+
+    /* ── Side panel ──────────────────────────────────────── */
+    .side-panel { display: flex; flex-direction: column; gap: 22px; }
+
+    /* Threat level indicator */
+    .threat-ring {
+      width: 130px; height: 130px;
+      border-radius: 50%;
+      margin: 0 auto 18px;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      transition: background .5s;
+    }
+    .threat-ring .ring-level { font-size: 1.1rem; letter-spacing: .05em; }
+    .threat-ring .ring-icon  { font-size: 2rem; }
+
+    .threat-ring.LOW      { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .threat-ring.MEDIUM   { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .threat-ring.HIGH     { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .threat-ring.CRITICAL { background: linear-gradient(135deg, #991b1b, #7f1d1d); animation: ringPulse 1.8s ease-in-out infinite; }
+    @keyframes ringPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+
+    .threat-desc { text-align: center; font-size: 0.85rem; color: var(--muted); }
+
+    /* Test panel */
+    .test-panel h3 { font-size: 1rem; margin-bottom: 14px; color: var(--text); }
+    .field-row { margin-bottom: 10px; }
+    .field-row label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .field-row select,
+    .field-row input  {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.85rem; background: #f8fafc;
+      outline: none; transition: border-color .2s;
+    }
+    .field-row select:focus,
+    .field-row input:focus { border-color: var(--purple); }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      top: 20px; right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 12px 18px;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 6px 18px rgba(0,0,0,.2);
+      animation: toastIn .3s ease-out;
+      pointer-events: auto;
+      max-width: 300px;
+    }
+    .toast.CRITICAL { background: var(--dark-red); }
+    .toast.HIGH     { background: var(--red); }
+    .toast.MEDIUM   { background: var(--orange); }
+    .toast.LOW      { background: var(--green); }
+    @keyframes toastIn {
+      from { opacity:0; transform: translateX(20px); }
+      to   { opacity:1; transform: translateX(0); }
+    }
+    @keyframes toastOut {
+      from { opacity:1; }
+      to   { opacity:0; transform: translateX(20px); }
+    }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="page">
+    <!-- Nav -->
+    <div class="nav-bar">
+      <strong>Modules:</strong>
+      <a href="test_generate_token.html">1 · Honeytoken factory</a>
+      <span class="sep"> | </span>
+      <a href="attack_graph_dashboard.html">2 · Attack graph</a>
+      <span class="sep"> | </span>
+      <a href="dashboard.html">3 · RL deployment</a>
+      <span class="sep"> | </span>
+      <a href="threat_attribution_dashboard.html">4 · Attribution</a>
+      <span class="sep"> | </span>
+      <a href="alerts_dashboard.html" class="active">5 · Live alerts</a>
+    </div>
+
+    <!-- Header -->
+    <div class="page-header" style="border-radius:0 0 0 0; margin-bottom:0;">
+      <div>
+        <h1>🔔 Live Alert Feed</h1>
+        <p>Real-time SSE stream — honeytoken breach notifications</p>
+      </div>
+      <div id="conn-badge" class="conn-badge">
+        <div class="conn-dot"></div>
+        <span id="conn-text">Connecting…</span>
+      </div>
+    </div>
+
+    <div style="height:22px;"></div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-chip">
+        <div class="label">Total Alerts</div>
+        <div class="value" id="stat-total">0</div>
+      </div>
+      <div class="stat-chip crit">
+        <div class="label">Critical</div>
+        <div class="value" id="stat-critical">0</div>
+      </div>
+      <div class="stat-chip high">
+        <div class="label">High</div>
+        <div class="value" id="stat-high">0</div>
+      </div>
+      <div class="stat-chip med">
+        <div class="label">Medium</div>
+        <div class="value" id="stat-medium">0</div>
+      </div>
+      <div class="stat-chip low">
+        <div class="label">Low</div>
+        <div class="value" id="stat-low">0</div>
+      </div>
+      <div class="stat-chip">
+        <div class="label">SSE Clients</div>
+        <div class="value" id="stat-clients">—</div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="main-grid">
+
+      <!-- Alert feed -->
+      <div class="card">
+        <div class="feed-header">
+          <h2>Alert stream</h2>
+          <div class="feed-controls">
+            <label style="font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="pause-toggle"> Pause
+            </label>
+            <button class="btn btn-danger" onclick="AlertFeed.clear()">Clear</button>
+          </div>
+        </div>
+
+        <div class="alert-feed" id="alert-feed">
+          <div class="empty-feed">
+            <div class="icon">🔕</div>
+            <p>No alerts yet — stream is live and waiting for triggered honeytokens.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side panel -->
+      <div class="side-panel">
+
+        <!-- Threat level -->
+        <div class="card" style="text-align:center;">
+          <h2 style="font-size:1.1rem;margin-bottom:18px;">Current Threat Level</h2>
+          <div class="threat-ring LOW" id="threat-ring">
+            <div class="ring-icon" id="threat-icon">✓</div>
+            <div class="ring-level" id="threat-level-text">LOW</div>
+          </div>
+          <p class="threat-desc" id="threat-desc">System operating normally</p>
+        </div>
+
+        <!-- Fire test alert -->
+        <div class="card test-panel">
+          <h3>Fire test alert</h3>
+          <div class="field-row">
+            <label>Token ID</label>
+            <input type="text" id="test-token-id" value="ht_demo" placeholder="ht_1234">
+          </div>
+          <div class="field-row">
+            <label>Token Type</label>
+            <select id="test-token-type">
+              <option>jwt</option>
+              <option>api_key</option>
+              <option>github_token</option>
+              <option>db_credentials</option>
+              <option>cloud_api_key</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>Attacker IP</label>
+            <input type="text" id="test-attacker-ip" value="192.168.1.100" placeholder="10.0.0.1">
+          </div>
+          <div class="field-row">
+            <label>Location</label>
+            <select id="test-location">
+              <option>env_file</option>
+              <option>git_repository</option>
+              <option>database_table</option>
+              <option>api_endpoint</option>
+              <option>admin_panel</option>
+              <option>cloud_storage</option>
+              <option>ci_pipeline</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label>Severity</label>
+            <select id="test-severity">
+              <option>HIGH</option>
+              <option>CRITICAL</option>
+              <option>MEDIUM</option>
+              <option>LOW</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="AlertFeed.fireTest()">
+            Send alert
+          </button>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card test-panel">
+          <h3>Quick actions</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-ghost" style="width:100%;" onclick="AlertFeed.loadHistory()">Reload history</button>
+            <button class="btn btn-ghost" style="width:100%;" onclick="AlertFeed.refreshStats()">Refresh stats</button>
+            <button class="btn btn-ghost" style="width:100%;" onclick="AlertFeed.reconnect()">Reconnect SSE</button>
+          </div>
+        </div>
+
+      </div><!-- /side-panel -->
+    </div><!-- /main-grid -->
+  </div><!-- /page -->
+
+  <script>
+    // =========================================================
+    // Configuration
+    // =========================================================
+    const API = 'http://localhost:8000';
+
+    // =========================================================
+    // AlertFeed — self-contained vanilla JS component
+    // =========================================================
+    const AlertFeed = (() => {
+      // ── State ───────────────────────────────────────────────
+      let _es        = null;   // EventSource
+      let _paused    = false;
+      let _counts    = { total: 0, CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+      let _items     = [];     // alert objects, newest first
+      const MAX_ITEMS = 200;
+
+      // ── DOM refs ────────────────────────────────────────────
+      const feedEl    = () => document.getElementById('alert-feed');
+      const badgeEl   = () => document.getElementById('conn-badge');
+      const textEl    = () => document.getElementById('conn-text');
+
+      // ── Connection ──────────────────────────────────────────
+      function connect() {
+        if (_es) { _es.close(); _es = null; }
+
+        _setBadge('connecting');
+        _es = new EventSource(`${API}/api/alerts/stream`);
+
+        _es.addEventListener('connected', () => {
+          _setBadge('live');
+        });
+
+        _es.addEventListener('alert', (e) => {
+          try {
+            const alert = JSON.parse(e.data);
+            _onAlert(alert);
+          } catch (_) {}
+        });
+
+        _es.onerror = () => {
+          _setBadge('error');
+          _es.close();
+          _es = null;
+          // Auto-reconnect after 5 s
+          setTimeout(connect, 5000);
+        };
+      }
+
+      function reconnect() { connect(); }
+
+      // ── Alert handler ───────────────────────────────────────
+      function _onAlert(alert) {
+        _items.unshift(alert);
+        if (_items.length > MAX_ITEMS) _items.pop();
+
+        _counts.total++;
+        const sev = alert.severity || 'HIGH';
+        _counts[sev] = (_counts[sev] || 0) + 1;
+
+        _updateStats();
+        _updateThreat();
+
+        if (!_paused) _renderFeed();
+        _showToast(alert);
+        refreshStats();   // sync server-side client count
+      }
+
+      // ── Render feed ─────────────────────────────────────────
+      function _renderFeed() {
+        const el = feedEl();
+        if (_items.length === 0) {
+          el.innerHTML = `
+            <div class="empty-feed">
+              <div class="icon">🔕</div>
+              <p>No alerts yet — stream is live and waiting for triggered honeytokens.</p>
+            </div>`;
+          return;
+        }
+
+        el.innerHTML = _items.map(a => {
+          const sev  = a.severity || 'HIGH';
+          const time = _fmtTime(a.timestamp);
+          return `
+          <div class="alert-item ${sev}">
+            <div class="alert-top">
+              <span class="sev-badge ${sev}">${sev}</span>
+              <span style="font-size:.78rem;color:var(--muted);">${a.token_type || '—'}</span>
+              <span class="alert-time">${time}</span>
+            </div>
+            <div class="alert-message">${_esc(a.message)}</div>
+            <div class="alert-meta">
+              <span><strong>Token:</strong> ${_esc(a.token_id)}</span>
+              <span><strong>IP:</strong> ${_esc(a.attacker_ip)}</span>
+              <span><strong>Location:</strong> ${_esc(a.location)}</span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      // ── Stats ────────────────────────────────────────────────
+      function _updateStats() {
+        document.getElementById('stat-total').textContent    = _counts.total;
+        document.getElementById('stat-critical').textContent = _counts.CRITICAL;
+        document.getElementById('stat-high').textContent     = _counts.HIGH;
+        document.getElementById('stat-medium').textContent   = _counts.MEDIUM;
+        document.getElementById('stat-low').textContent      = _counts.LOW;
+      }
+
+      async function refreshStats() {
+        try {
+          const r = await fetch(`${API}/api/alerts/stats`);
+          const d = await r.json();
+          document.getElementById('stat-clients').textContent = d.connected_clients ?? '—';
+          // Sync counts from server history (covers page-reload case)
+          if (d.total > _counts.total) {
+            _counts.total    = d.total;
+            _counts.CRITICAL = d.by_severity?.CRITICAL ?? _counts.CRITICAL;
+            _counts.HIGH     = d.by_severity?.HIGH     ?? _counts.HIGH;
+            _counts.MEDIUM   = d.by_severity?.MEDIUM   ?? _counts.MEDIUM;
+            _counts.LOW      = d.by_severity?.LOW      ?? _counts.LOW;
+            _updateStats();
+          }
+        } catch (_) {}
+      }
+
+      // ── Threat level ─────────────────────────────────────────
+      function _updateThreat() {
+        let level = 'LOW';
+        if      (_counts.CRITICAL > 0) level = 'CRITICAL';
+        else if (_counts.HIGH     > 0) level = 'HIGH';
+        else if (_counts.MEDIUM   > 0) level = 'MEDIUM';
+
+        const ring = document.getElementById('threat-ring');
+        const icon = document.getElementById('threat-icon');
+        const txt  = document.getElementById('threat-level-text');
+        const desc = document.getElementById('threat-desc');
+
+        ring.className = `threat-ring ${level}`;
+        txt.textContent = level;
+
+        const meta = {
+          LOW:      { icon: '✓', desc: 'System operating normally' },
+          MEDIUM:   { icon: '⚠', desc: 'Elevated activity detected' },
+          HIGH:     { icon: '⚠', desc: 'Active threats — honeytokens triggered' },
+          CRITICAL: { icon: '!', desc: 'CRITICAL — immediate action required' },
+        };
+        icon.textContent = meta[level].icon;
+        desc.textContent = meta[level].desc;
+      }
+
+      // ── Toast ─────────────────────────────────────────────────
+      function _showToast(alert) {
+        const sev = alert.severity || 'HIGH';
+        const el  = document.createElement('div');
+        el.className = `toast ${sev}`;
+        el.textContent = `${sev}: ${alert.message}`;
+        document.getElementById('toast-container').appendChild(el);
+        setTimeout(() => {
+          el.style.animation = 'toastOut .3s ease-in forwards';
+          setTimeout(() => el.remove(), 320);
+        }, 4500);
+      }
+
+      // ── History loader ────────────────────────────────────────
+      async function loadHistory() {
+        try {
+          const r = await fetch(`${API}/api/alerts/history?limit=100`);
+          const d = await r.json();
+          if (!d.alerts?.length) return;
+          _items = d.alerts;  // already newest-first from server
+          // Recount
+          _counts = { total: d.alerts.length, CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+          d.alerts.forEach(a => {
+            const s = a.severity || 'HIGH';
+            _counts[s] = (_counts[s] || 0) + 1;
+          });
+          _updateStats();
+          _updateThreat();
+          _renderFeed();
+        } catch (_) {}
+      }
+
+      // ── Fire test alert ───────────────────────────────────────
+      async function fireTest() {
+        const body = {
+          token_id:    document.getElementById('test-token-id').value    || 'ht_demo',
+          token_type:  document.getElementById('test-token-type').value  || 'jwt',
+          attacker_ip: document.getElementById('test-attacker-ip').value || '127.0.0.1',
+          location:    document.getElementById('test-location').value    || 'env_file',
+          severity:    document.getElementById('test-severity').value    || 'HIGH',
+          message:     `Honeytoken accessed from ${document.getElementById('test-attacker-ip').value}`,
+        };
+        try {
+          const r = await fetch(`${API}/api/alerts/trigger`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          if (!r.ok) throw new Error(r.status);
+        } catch (e) {
+          alert('Could not reach backend: ' + e.message);
+        }
+      }
+
+      // ── Clear ─────────────────────────────────────────────────
+      function clear() {
+        _items = [];
+        _counts = { total: 0, CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+        _updateStats();
+        _updateThreat();
+        _renderFeed();
+      }
+
+      // ── Helpers ───────────────────────────────────────────────
+      function _setBadge(state) {
+        const b = badgeEl();
+        const t = textEl();
+        b.className = 'conn-badge';
+        if (state === 'live')       { b.classList.add('live');  t.textContent = 'Live'; }
+        else if (state === 'error') { b.classList.add('error'); t.textContent = 'Disconnected — retrying…'; }
+        else                        { t.textContent = 'Connecting…'; }
+      }
+
+      function _fmtTime(iso) {
+        if (!iso) return '—';
+        try { return new Date(iso).toLocaleTimeString(); } catch (_) { return iso; }
+      }
+
+      function _esc(s) {
+        if (s == null) return '—';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      // ── Pause toggle ──────────────────────────────────────────
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('pause-toggle').addEventListener('change', (e) => {
+          _paused = e.target.checked;
+          if (!_paused) _renderFeed();
+        });
+      });
+
+      // ── Init ──────────────────────────────────────────────────
+      function init() {
+        connect();
+        loadHistory();
+        refreshStats();
+        // Refresh server-side stats every 15 s
+        setInterval(refreshStats, 15000);
+      }
+
+      return { init, connect, reconnect, clear, loadHistory, refreshStats, fireTest };
+    })();
+
+    // Bootstrap
+    window.addEventListener('DOMContentLoaded', AlertFeed.init);
+  </script>
+</body>
+</html>

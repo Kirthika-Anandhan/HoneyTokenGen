@@ -1,5 +1,25 @@
 node_modules/
 venv/
 __pycache__/
-.env
+*.pyc
+
+# Secrets / lure files (never commit real deployed tokens)
+backend/deployed_tokens/.env
+backend/deployed_tokens/config.json
+backend/deployed_tokens/access.log
+
+# Generated reports (large PDFs)
+backend/reports/*.pdf
+
+# ML model weights (large binary — commit only if needed)
+backend/honeytoken_v5.pt
+backend/honeytoken_models.pt
+
+# Logs and local DB
 *.log
+*.sqlite
+
+# OS / IDE
+.DS_Store
+.env
+*.env

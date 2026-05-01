@@ -3,6 +3,8 @@ uvicorn
 pymongo
 numpy
 pandas
+reportlab
+faker
 python-dotenv
 torch
 torch-geometric

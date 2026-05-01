@@ -1,0 +1,691 @@
+{
+  "generated_at": "2026-03-27T17:30:23.392418Z",
+  "status": "success",
+  "module": "threat_attribution_profiling",
+  "engine_notes": "Heterogeneous Graph Transformer + temporal Transformer; heuristics always included.",
+  "event_count": 386,
+  "snapshot_count": 20,
+  "campaign_attribution": {
+    "primary_actor_class": "external_network_attacker",
+    "confidence": 0.3171,
+    "distribution": {
+      "undetermined": 0.0244,
+      "external_network_attacker": 0.3171,
+      "compromised_account": 0.3171,
+      "privileged_insider": 0.1951,
+      "automated_tooling": 0.1463
+    },
+    "source": "heuristic_rules",
+    "neural_distribution": {
+      "undetermined": 0.0002,
+      "external_network_attacker": 0.9993,
+      "compromised_account": 0.0001,
+      "privileged_insider": 0.0001,
+      "automated_tooling": 0.0003
+    }
+  },
+  "attack_profile": {
+    "dominant_stage": "reconnaissance",
+    "per_snapshot": [
+      {
+        "time_start": "2023-11-14T22:13:21.211470Z",
+        "time_end": "2023-11-14T22:23:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T22:16:21.211470Z",
+        "time_end": "2023-11-14T22:26:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.9
+      },
+      {
+        "time_start": "2023-11-14T22:19:21.211470Z",
+        "time_end": "2023-11-14T22:29:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.9
+      },
+      {
+        "time_start": "2023-11-14T22:22:21.211470Z",
+        "time_end": "2023-11-14T22:32:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.9
+      },
+      {
+        "time_start": "2023-11-14T22:25:21.211470Z",
+        "time_end": "2023-11-14T22:35:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.9
+      },
+      {
+        "time_start": "2023-11-14T22:28:21.211470Z",
+        "time_end": "2023-11-14T22:38:21.211470Z",
+        "heuristic_stage": "privilege_escalation",
+        "heuristic_confidence": 0.9
+      },
+      {
+        "time_start": "2023-11-14T22:31:21.211470Z",
+        "time_end": "2023-11-14T22:41:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:34:21.211470Z",
+        "time_end": "2023-11-14T22:44:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:37:21.211470Z",
+        "time_end": "2023-11-14T22:47:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:40:21.211470Z",
+        "time_end": "2023-11-14T22:50:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:43:21.211470Z",
+        "time_end": "2023-11-14T22:53:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:46:21.211470Z",
+        "time_end": "2023-11-14T22:56:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:49:21.211470Z",
+        "time_end": "2023-11-14T22:59:21.211470Z",
+        "heuristic_stage": "exfiltration",
+        "heuristic_confidence": 0.92
+      },
+      {
+        "time_start": "2023-11-14T22:52:21.211470Z",
+        "time_end": "2023-11-14T23:02:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T22:55:21.211470Z",
+        "time_end": "2023-11-14T23:05:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T22:58:21.211470Z",
+        "time_end": "2023-11-14T23:08:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T23:01:21.211470Z",
+        "time_end": "2023-11-14T23:11:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T23:04:21.211470Z",
+        "time_end": "2023-11-14T23:14:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T23:07:21.211470Z",
+        "time_end": "2023-11-14T23:17:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      },
+      {
+        "time_start": "2023-11-14T23:10:21.211470Z",
+        "time_end": "2023-11-14T23:20:21.211470Z",
+        "heuristic_stage": "reconnaissance",
+        "heuristic_confidence": 0.65
+      }
+    ]
+  },
+  "next_stage": {
+    "per_snapshot": [
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 0
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 1
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 2
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 3
+      },
+      {
+        "predicted_next_stage": "privilege_escalation",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 4
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 5
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 6
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 7
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 8
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 9
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 10
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 11
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 12
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 13
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 14
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 15
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 16
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 17
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 18
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "confidence": 0.55,
+        "source": "heuristic_rollforward",
+        "window_index": 19
+      }
+    ]
+  },
+  "neural_model": {
+    "available": true,
+    "checkpoint": "/home/kirthika/Desktop/final_pro_2/AI_honeytoken_generator/backend/threat_attribution_module/checkpoints/best_hgt_seq.pt",
+    "attribution_distribution": {
+      "undetermined": 0.0002,
+      "external_network_attacker": 0.9993,
+      "compromised_account": 0.0001,
+      "privileged_insider": 0.0001,
+      "automated_tooling": 0.0003
+    },
+    "per_snapshot_profile": [
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0057,
+          "reconnaissance": 0.9911,
+          "lateral_movement": 0.0004,
+          "privilege_escalation": 0.0007,
+          "exfiltration": 0.0022
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.004,
+          "reconnaissance": 0.9939,
+          "lateral_movement": 0.0002,
+          "privilege_escalation": 0.0005,
+          "exfiltration": 0.0014
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0016,
+          "reconnaissance": 0.9973,
+          "lateral_movement": 0.0003,
+          "privilege_escalation": 0.0001,
+          "exfiltration": 0.0007
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0017,
+          "reconnaissance": 0.9971,
+          "lateral_movement": 0.0003,
+          "privilege_escalation": 0.0001,
+          "exfiltration": 0.0007
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0013,
+          "reconnaissance": 0.9971,
+          "lateral_movement": 0.0009,
+          "privilege_escalation": 0.0001,
+          "exfiltration": 0.0007
+        }
+      },
+      {
+        "stage": "privilege_escalation",
+        "distribution": {
+          "benign": 0.0031,
+          "reconnaissance": 0.0011,
+          "lateral_movement": 0.0045,
+          "privilege_escalation": 0.9277,
+          "exfiltration": 0.0637
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0008,
+          "reconnaissance": 0.0005,
+          "lateral_movement": 0.0002,
+          "privilege_escalation": 0.0062,
+          "exfiltration": 0.9923
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0007,
+          "reconnaissance": 0.0005,
+          "lateral_movement": 0.0002,
+          "privilege_escalation": 0.0032,
+          "exfiltration": 0.9955
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0005,
+          "reconnaissance": 0.0006,
+          "lateral_movement": 0.0001,
+          "privilege_escalation": 0.0008,
+          "exfiltration": 0.9979
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0004,
+          "reconnaissance": 0.0007,
+          "lateral_movement": 0.0001,
+          "privilege_escalation": 0.0006,
+          "exfiltration": 0.9981
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0004,
+          "reconnaissance": 0.0007,
+          "lateral_movement": 0.0001,
+          "privilege_escalation": 0.0006,
+          "exfiltration": 0.9981
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0005,
+          "reconnaissance": 0.0007,
+          "lateral_movement": 0.0001,
+          "privilege_escalation": 0.0006,
+          "exfiltration": 0.9981
+        }
+      },
+      {
+        "stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0005,
+          "reconnaissance": 0.001,
+          "lateral_movement": 0.0002,
+          "privilege_escalation": 0.0004,
+          "exfiltration": 0.9979
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0064,
+          "reconnaissance": 0.9898,
+          "lateral_movement": 0.0004,
+          "privilege_escalation": 0.0008,
+          "exfiltration": 0.0026
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0036,
+          "reconnaissance": 0.9943,
+          "lateral_movement": 0.0003,
+          "privilege_escalation": 0.0003,
+          "exfiltration": 0.0015
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0052,
+          "reconnaissance": 0.9917,
+          "lateral_movement": 0.0009,
+          "privilege_escalation": 0.0004,
+          "exfiltration": 0.0018
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0053,
+          "reconnaissance": 0.9912,
+          "lateral_movement": 0.0009,
+          "privilege_escalation": 0.0004,
+          "exfiltration": 0.0022
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0049,
+          "reconnaissance": 0.9907,
+          "lateral_movement": 0.0022,
+          "privilege_escalation": 0.0004,
+          "exfiltration": 0.0017
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0053,
+          "reconnaissance": 0.9913,
+          "lateral_movement": 0.0012,
+          "privilege_escalation": 0.0004,
+          "exfiltration": 0.0018
+        }
+      },
+      {
+        "stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0052,
+          "reconnaissance": 0.9921,
+          "lateral_movement": 0.0006,
+          "privilege_escalation": 0.0006,
+          "exfiltration": 0.0015
+        }
+      }
+    ],
+    "next_stage_prediction": [
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0113,
+          "reconnaissance": 0.9862,
+          "lateral_movement": 0.0009,
+          "privilege_escalation": 0.0003,
+          "exfiltration": 0.0013
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0136,
+          "reconnaissance": 0.9829,
+          "lateral_movement": 0.0014,
+          "privilege_escalation": 0.0003,
+          "exfiltration": 0.0018
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0158,
+          "reconnaissance": 0.9654,
+          "lateral_movement": 0.0164,
+          "privilege_escalation": 0.0009,
+          "exfiltration": 0.0014
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0154,
+          "reconnaissance": 0.9705,
+          "lateral_movement": 0.0119,
+          "privilege_escalation": 0.0007,
+          "exfiltration": 0.0015
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0214,
+          "reconnaissance": 0.9031,
+          "lateral_movement": 0.0708,
+          "privilege_escalation": 0.0029,
+          "exfiltration": 0.0017
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0032,
+          "reconnaissance": 0.0015,
+          "lateral_movement": 0.0004,
+          "privilege_escalation": 0.2461,
+          "exfiltration": 0.7489
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0005,
+          "reconnaissance": 0.0006,
+          "lateral_movement": 0.0001,
+          "privilege_escalation": 0.0024,
+          "exfiltration": 0.9965
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0005,
+          "reconnaissance": 0.0006,
+          "lateral_movement": 0.0001,
+          "privilege_escalation": 0.0017,
+          "exfiltration": 0.9971
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0007,
+          "reconnaissance": 0.0027,
+          "lateral_movement": 0.0002,
+          "privilege_escalation": 0.001,
+          "exfiltration": 0.9954
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0007,
+          "reconnaissance": 0.0039,
+          "lateral_movement": 0.0003,
+          "privilege_escalation": 0.001,
+          "exfiltration": 0.9941
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0008,
+          "reconnaissance": 0.0049,
+          "lateral_movement": 0.0003,
+          "privilege_escalation": 0.0011,
+          "exfiltration": 0.993
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0008,
+          "reconnaissance": 0.0048,
+          "lateral_movement": 0.0003,
+          "privilege_escalation": 0.001,
+          "exfiltration": 0.9931
+        }
+      },
+      {
+        "predicted_next_stage": "exfiltration",
+        "distribution": {
+          "benign": 0.0014,
+          "reconnaissance": 0.0176,
+          "lateral_movement": 0.0005,
+          "privilege_escalation": 0.0013,
+          "exfiltration": 0.9792
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0116,
+          "reconnaissance": 0.9859,
+          "lateral_movement": 0.0007,
+          "privilege_escalation": 0.0002,
+          "exfiltration": 0.0016
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0143,
+          "reconnaissance": 0.9816,
+          "lateral_movement": 0.0023,
+          "privilege_escalation": 0.0003,
+          "exfiltration": 0.0015
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0096,
+          "reconnaissance": 0.987,
+          "lateral_movement": 0.0024,
+          "privilege_escalation": 0.0002,
+          "exfiltration": 0.0008
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0098,
+          "reconnaissance": 0.9869,
+          "lateral_movement": 0.0023,
+          "privilege_escalation": 0.0002,
+          "exfiltration": 0.0008
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.01,
+          "reconnaissance": 0.9823,
+          "lateral_movement": 0.0068,
+          "privilege_escalation": 0.0003,
+          "exfiltration": 0.0005
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0096,
+          "reconnaissance": 0.9868,
+          "lateral_movement": 0.0026,
+          "privilege_escalation": 0.0003,
+          "exfiltration": 0.0007
+        }
+      },
+      {
+        "predicted_next_stage": "reconnaissance",
+        "distribution": {
+          "benign": 0.0114,
+          "reconnaissance": 0.9861,
+          "lateral_movement": 0.0011,
+          "privilege_escalation": 0.0004,
+          "exfiltration": 0.001
+        }
+      }
+    ]
+  }
+}

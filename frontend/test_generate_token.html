@@ -319,6 +319,8 @@
             <a href="dashboard.html" style="color:#667eea;">3 · RL deployment</a>
             <span style="color:#999;"> | </span>
             <a href="threat_attribution_dashboard.html" style="color:#667eea;">4 · Attribution</a>
+            <span style="color:#999;"> | </span>
+            <a href="alerts_dashboard.html" style="color:#667eea;">5 · Live alerts</a>
         </div>
         <div class="header">
             <h1>🔐 ML Honeytoken Generator</h1>
@@ -420,6 +422,7 @@
                 }
 
                 const data = await response.json();
+                lastTokensData = data;
                 displayResults(data);
 
             } catch (error) {
@@ -437,65 +440,155 @@
         }
 
         function displayResults(data) {
-            const tokens = data.tokens;
-            
-            // Calculate summary stats
-            const avgEntropy = (tokens.reduce((sum, t) => sum + t.entropy, 0) / tokens.length).toFixed(3);
-            const avgAuth = (tokens.reduce((sum, t) => sum + t.similarity, 0) / tokens.length).toFixed(3);
-            
-            let html = `
-                <div class="stats-summary">
-                    <h3>✅ Generated ${tokens.length} Honeytoken(s)</h3>
-                    <p>Method: <strong>${data.method.toUpperCase()}</strong> | 
-                       Avg Entropy: <strong>${avgEntropy}</strong> | 
-                       Avg Authenticity: <strong>${avgAuth}</strong></p>
-                </div>
-            `;
+    const tokens = data?.tokens || [];
 
-            tokens.forEach((token, idx) => {
-                const tokenValueDisplay = formatTokenValue(token.token_value);
-                const methodClass = `method-${token.method}`;
+    if (tokens.length === 0) {
+        document.getElementById('result').innerHTML = `
+            <div style="background:#fee2e2;color:#991b1b;padding:20px;border-radius:8px;">
+                No tokens returned from API.
+            </div>
+        `;
+        return;
+    }
+
+    const avgEntropy = (
+        tokens.reduce((sum, t) => sum + (t.entropy || 0), 0) / tokens.length
+    ).toFixed(3);
+
+    const avgAuth = (
+        tokens.reduce((sum, t) => sum + (t.authenticity || t.entropy_ratio || 0), 0) / tokens.length
+    ).toFixed(3);
+
+    const safeMethod = (data && typeof data.method === "string")
+    ? data.method.toUpperCase()
+    : "HYBRID";
+
+    let html = `
+        <div class="stats-summary">
+            <h3>✅ Generated ${tokens.length} Honeytoken(s)</h3>
+            <p>Method: <strong>${safeMethod}</strong> | 
+               Avg Entropy: <strong>${avgEntropy}</strong> | 
+               Avg Authenticity: <strong>${avgAuth}</strong></p>
+        </div>
+    `;
+
+    tokens.forEach((token, idx) => {
+        const tokenValueDisplay = formatTokenValue(token.token_value);
+        const methodClass = `method-${token.method || "hybrid"}`;
+        
+        const entropyClass =
+            token.entropy >= 4.5 ? 'high' :
+            token.entropy >= 3.5 ? 'medium' : 'low';
+
+        const authClass =
+            (token.authenticity || token.entropy_ratio || 0) >= 0.90 ? 'high' :
+            (token.authenticity || token.entropy_ratio || 0) >= 0.80 ? 'medium' : 'low';
+
+        html += `
+            <div class="token-card">
+                <div class="token-header">
+                    <span class="token-number">Token #${idx + 1}</span>
+                    <div>
+                        <span class="token-type">
+                            ${token.token_type || data.token_usage || "TOKEN"}
+                        </span>
+                        <span class="method-badge ${methodClass}">
+                            ${token.method || "hybrid"}
+                        </span>
+                    </div>
+                </div>
                 
-                const entropyClass = token.entropy >= 4.5 ? 'high' : token.entropy >= 3.5 ? 'medium' : 'low';
-                const authClass = token.similarity >= 0.90 ? 'high' : token.similarity >= 0.80 ? 'medium' : 'low';
+                <div class="token-value">
+                    <pre style="margin:0;white-space:pre-wrap;">
+${tokenValueDisplay}
+                    </pre>
+                </div>
                 
-                html += `
-                    <div class="token-card">
-                        <div class="token-header">
-                            <span class="token-number">Token #${idx + 1}</span>
-                            <div>
-                                <span class="token-type">${token.token_type || data.token_usage}</span>
-                                <span class="method-badge ${methodClass}">${token.method}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="token-value">
-                            <pre style="margin: 0; white-space: pre-wrap;">${tokenValueDisplay}</pre>
-                        </div>
-                        
-                        <button class="copy-btn" onclick="copyToClipboard(\`${escapeHtml(tokenValueDisplay)}\`, ${idx})">
-                            📋 Copy Token
-                        </button>
-                        
-                        <div class="metrics">
-                            <div class="metric">
-                                <div class="metric-label">Entropy</div>
-                                <div class="metric-value ${entropyClass}">${token.entropy.toFixed(3)}</div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">Authenticity</div>
-                                <div class="metric-value ${authClass}">${(token.similarity * 100).toFixed(1)}%</div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">Discriminator</div>
-                                <div class="metric-value ${authClass}">${(token.discriminator * 100).toFixed(1)}%</div>
-                            </div>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">Entropy</div>
+                        <div class="metric-value ${entropyClass}">
+                            ${(token.entropy || 0).toFixed(3)}
                         </div>
                     </div>
-                `;
-            });
+                    <div class="metric">
+                        <div class="metric-label">Authenticity</div>
+                        <div class="metric-value ${authClass}">
+                            ${((token.authenticity || token.entropy_ratio || 0) * 100).toFixed(1)}%
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Discriminator</div>
+                        <div class="metric-value ${authClass}">
+                            ${((token.disc_score || 0) * 100).toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
 
-            document.getElementById('result').innerHTML = html;
+                <div style="margin-top:12px;text-align:right;">
+                    <button onclick="downloadReport(${idx})"
+                        style="background:#6366f1;color:white;border:none;padding:8px 18px;
+                               border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
+                        📄 Download Report
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById('result').innerHTML = html;
+}
+
+
+        // Holds last API response so downloadReport can reference it
+        let lastTokensData = null;
+
+        async function downloadReport(idx) {
+            if (!lastTokensData) return alert("Generate tokens first.");
+            const token = lastTokensData.tokens[idx];
+            if (!token) return;
+
+            const tv = token.token_value || {};
+            const payload = {
+                token_id:      token.token_type + "_" + Date.now(),
+                token_type:    token.token_type  || lastTokensData.token_usage,
+                token_value:   typeof tv === "object" ? (tv.token || JSON.stringify(tv)) : tv,
+                attacker_ip:   "N/A",
+                triggered_at:  new Date().toISOString(),
+                attack_stages: ["reconnaissance", "lateral_movement"],
+                risk_score:    token.disc_score || 0.5,
+                entropy:       token.entropy       || 0,
+                entropy_ratio: token.entropy_ratio || 0,
+                disc_score:    token.disc_score    || 0,
+                authenticity:  token.authenticity  || 0,
+                attribution:   "Unknown",
+            };
+
+            const btn = event.target;
+            btn.textContent = "⏳ Generating…";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch("http://localhost:8000/api/generate-report", {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error(await res.text());
+                const blob = await res.blob();
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement("a");
+                a.href     = url;
+                a.download = `breach_report_${payload.token_type}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+                btn.textContent = "✅ Downloaded";
+            } catch (e) {
+                alert("Report generation failed: " + e.message);
+                btn.textContent = "📄 Download Report";
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         function formatTokenValue(tokenValue) {

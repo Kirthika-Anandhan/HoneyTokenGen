@@ -397,6 +397,8 @@
             <a href="dashboard.html" style="color:#667eea;">3 · RL deployment</a>
             <span style="color:#999;"> | </span>
             <a href="threat_attribution_dashboard.html" style="color:#667eea;">4 · Attribution</a>
+            <span style="color:#999;"> | </span>
+            <a href="alerts_dashboard.html" style="color:#667eea;">5 · Live alerts</a>
         </div>
         <!-- Header -->
         <div class="header">
@@ -525,8 +527,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Configuration
-        const API_BASE_URL = 'http://localhost:5000/api';  // Change this to your backend URL
+        // ── Backend URL (BUG 5 fix: was localhost:5000) ──────────
+        const RL_API = 'http://localhost:8000/api/rl';
 
         // Global state
         let deploymentHistory = [];
@@ -535,108 +537,85 @@
         // Initialize dashboard
         async function initDashboard() {
             console.log('Initializing dashboard...');
-            
-            // Load initial data
             await loadStats();
             await getRecommendation();
-            loadDeploymentHistory();
-            loadDetectionHistory();
             initCharts();
-            
-            // Update every 30 seconds
-            setInterval(() => {
-                loadStats();
-                loadDetectionHistory();
-            }, 30000);
+            // Refresh every 30 s
+            setInterval(() => { loadStats(); }, 30000);
         }
 
         // Get RL Recommendation
+        // BUG 5 fix: was GET /rl_recommendation → now POST /api/rl/recommend
+        // Response shape: { deployment_area, token_type, priority_level, confidence, ... }
         async function getRecommendation() {
             try {
-                const response = await fetch(`${API_BASE_URL}/rl_recommendation`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const rec = data.recommendation;
-                    
-                    // Update UI
-                    document.getElementById('rec-area').textContent = rec.area;
-                    document.getElementById('rec-type').textContent = rec.token_type;
-                    document.getElementById('rec-priority').textContent = 
-                        (rec.priority * 100).toFixed(0) + '%';
-                    document.getElementById('rec-confidence').textContent = 
-                        (rec.confidence * 100).toFixed(0) + '%';
-                    
-                    // Update progress bars
-                    document.getElementById('priority-bar').style.width = 
-                        (rec.priority * 100) + '%';
-                    document.getElementById('confidence-bar').style.width = 
-                        (rec.confidence * 100) + '%';
-                }
+                const response = await fetch(`${RL_API}/recommend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ threat_level: 'MEDIUM' })
+                });
+                const rec = await response.json();
+
+                document.getElementById('rec-area').textContent =
+                    rec.deployment_area || '—';
+                document.getElementById('rec-type').textContent =
+                    rec.token_type || '—';
+                document.getElementById('rec-priority').textContent =
+                    rec.priority_level || '—';
+                document.getElementById('rec-confidence').textContent =
+                    ((rec.confidence || 0) * 100).toFixed(0) + '%';
+
+                const pct = (rec.confidence || 0) * 100;
+                document.getElementById('priority-bar').style.width  = pct + '%';
+                document.getElementById('confidence-bar').style.width = pct + '%';
+
             } catch (error) {
                 console.error('Error getting recommendation:', error);
-                // Show demo data
                 showDemoRecommendation();
             }
         }
 
-        // Show demo recommendation (for testing)
+        // Fallback demo recommendation
         function showDemoRecommendation() {
-            const areas = ['grades', 'assignments', 'resources', 'profile'];
-            const types = ['fake_credential', 'fake_grade', 'fake_resource_link'];
-            
-            const rec = {
-                area: areas[Math.floor(Math.random() * areas.length)],
-                token_type: types[Math.floor(Math.random() * types.length)],
-                priority: Math.random() * 0.3 + 0.7,  // 0.7 - 1.0
-                confidence: 0.93 + Math.random() * 0.03  // 0.93 - 0.96
-            };
-            
-            document.getElementById('rec-area').textContent = rec.area;
-            document.getElementById('rec-type').textContent = rec.token_type;
-            document.getElementById('rec-priority').textContent = 
-                (rec.priority * 100).toFixed(0) + '%';
-            document.getElementById('rec-confidence').textContent = 
-                (rec.confidence * 100).toFixed(0) + '%';
-            
-            document.getElementById('priority-bar').style.width = 
-                (rec.priority * 100) + '%';
-            document.getElementById('confidence-bar').style.width = 
-                (rec.confidence * 100) + '%';
+            const areas = ['env_file', 'git_repository', 'database_table', 'admin_panel'];
+            const types = ['api_key', 'github_token', 'db_credentials', 'jwt_token'];
+            const confidence = 0.78 + Math.random() * 0.18;  // 0.78–0.96
+
+            document.getElementById('rec-area').textContent  = areas[Math.floor(Math.random() * areas.length)];
+            document.getElementById('rec-type').textContent  = types[Math.floor(Math.random() * types.length)];
+            document.getElementById('rec-priority').textContent  = Math.round(confidence * 100) + '%';
+            document.getElementById('rec-confidence').textContent = Math.round(confidence * 100) + '%';
+            document.getElementById('priority-bar').style.width  = (confidence * 100) + '%';
+            document.getElementById('confidence-bar').style.width = (confidence * 100) + '%';
         }
 
         // Deploy Honeytoken
+        // BUG 5 fix: was POST /deploy_rl_honeytoken → now POST /api/rl/deploy
+        // Request body: { location, token_type }   Response: { status: "deployed", ... }
         async function deployHoneytoken() {
             const area = document.getElementById('rec-area').textContent;
             const type = document.getElementById('rec-type').textContent;
-            
-            if (area === '-') {
+
+            if (area === '-' || area === '—') {
                 alert('Please get a recommendation first!');
                 return;
             }
-            
+
             try {
-                const response = await fetch(`${API_BASE_URL}/deploy_rl_honeytoken`, {
+                const response = await fetch(`${RL_API}/deploy`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        area: area,
-                        token_type: type
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ location: area, token_type: type })
                 });
-                
                 const data = await response.json();
-                
-                if (data.success) {
+
+                if (data.status === 'deployed') {
                     alert('✓ Honeytoken deployed successfully!');
                     addDeploymentToHistory(area, type);
                     await loadStats();
                 }
             } catch (error) {
                 console.error('Error deploying:', error);
-                // Demo mode
                 alert('✓ Honeytoken deployed successfully! (Demo Mode)');
                 addDeploymentToHistory(area, type);
                 updateDemoStats();
@@ -644,21 +623,43 @@
         }
 
         // Load Stats
+        // BUG 5 fix: was GET /honeytoken/stats → now GET /api/rl/stats
+        // Response: { active_honeytokens, total_detections, threat_level,
+        //             recent_deployments, recent_detections, ... }
         async function loadStats() {
             try {
-                const response = await fetch(`${API_BASE_URL}/honeytoken/stats`);
+                const response = await fetch(`${RL_API}/stats`);
                 const data = await response.json();
-                
-                document.getElementById('active-count').textContent = 
+
+                document.getElementById('active-count').textContent =
                     data.active_honeytokens || 0;
-                document.getElementById('detections').textContent = 
-                    data.stats?.total_detections || 0;
-                
-                // Update threat level
+                document.getElementById('detections').textContent =
+                    data.total_detections || 0;
+
                 updateThreatLevel(data.threat_level || 'low');
+
+                // Populate deployment history from real backend data
+                if (data.recent_deployments?.length) {
+                    deploymentHistory = data.recent_deployments.map(d => ({
+                        time: new Date(d.deployed_at).toLocaleTimeString(),
+                        area: d.location,
+                        type: d.token_type
+                    }));
+                    renderDeploymentHistory();
+                }
+
+                // Populate detection history from real backend data
+                if (data.recent_detections?.length) {
+                    detectionHistory = data.recent_detections.map(d => ({
+                        time: new Date(d.timestamp).toLocaleTimeString(),
+                        severity: 'high',
+                        description: `Token ${d.token_id} triggered from ${d.attacker_ip}`
+                    }));
+                    renderDetectionHistory();
+                }
+
             } catch (error) {
                 console.error('Error loading stats:', error);
-                // Use demo data
                 updateDemoStats();
             }
         }
